@@ -25,6 +25,10 @@ import aiohttp
 
 
 DATA_ALGORITHM = 'algorithm'
+DATA_BEGIN_HOUR = 'begin_hour'
+DATA_BEGIN_MINUTE = 'begin_minute'
+DATA_END_HOUR = 'end_hour'
+DATA_END_MINUTE = 'end_minute'
 DATA_BURN_LEVEL = 'burn_level'
 DATA_DATE_TIME = 'date_time'
 DATA_IP = 'ip'
@@ -73,6 +77,10 @@ DATA_HOURS = 'hours'
 DATA_MINUTES = 'minutes'
 DATA_SECONDS = 'seconds'
 
+HTTP_HEADERS = {
+    "Accept": "application/json"
+}
+
 PHASE = [
     'Ignition phase',
     'Burn phase',
@@ -82,9 +90,15 @@ PHASE = [
     'Start'
 ]
 
+RESPONSE_OK = 'OK'
+
 STOVE_BURN_LEVEL_URL = '/set_burn_level'
 STOVE_DATA_URL = '/get_stove_data'
 STOVE_ID_URL = '/esp/get_identification'
+STOVE_NIGHT_LOWERING_OFF_URL = '/set_night_lowering_off'
+STOVE_NIGHT_LOWERING_ON_URL = '/set_night_lowering_on'
+STOVE_NIGHT_TIME_URL = '/set_night_time'
+STOVE_START_URL = '/start'
 
 
 class pystove():
@@ -96,7 +110,7 @@ class pystove():
         self = cls()
         self.stove_host = stove_host
         self.loop = loop
-        self._session = aiohttp.ClientSession()
+        self._session = aiohttp.ClientSession(headers=HTTP_HEADERS)
         await self._identify()
         return self
 
@@ -123,14 +137,15 @@ class pystove():
         remote_version = "{}.{}.{}".format(data[DATA_REMOTE_VERSION_MAJOR],
                                            data[DATA_REMOTE_VERSION_MINOR],
                                            data[DATA_REMOTE_VERSION_BUILD])
-        for item in DATA_STOVE_TEMPERATURE, DATA_ROOM_TEMPERATURE, DATA_OXYGEN_LEVEL
+        for item in (DATA_STOVE_TEMPERATURE, DATA_ROOM_TEMPERATURE,
+                DATA_OXYGEN_LEVEL):
             data[item] = data[item]/100
         processed_data = {
             DATA_ALGORITHM: data[DATA_ALGORITHM],
             DATA_BURN_LEVEL: data[DATA_BURN_LEVEL],
             DATA_MAINTENANCE_ALARMS: data[DATA_MAINTENANCE_ALARMS],
             DATA_MESSAGE_ID: data[DATA_MESSAGE_ID],
-            DATA_NEW_FIRE_WOOD_ESTIMATE: refuel_estimate,
+            DATA_NEW_FIREWOOD_ESTIMATE: refuel_estimate,
             DATA_NIGHT_BEGIN_TIME: nighttime_start,
             DATA_NIGHT_END_TIME: nighttime_end,
             DATA_NIGHT_LOWERING: data[DATA_NIGHT_LOWERING],
@@ -144,7 +159,7 @@ class pystove():
             DATA_SAFETY_ALARMS: data[DATA_SAFETY_ALARMS],
             DATA_STOVE_TEMPERATURE: data[DATA_STOVE_TEMPERATURE],
             DATA_TIME_SINCE_REMOTE_MSG: data[DATA_TIME_SINCE_REMOTE_MSG],
-            DATA_TIME: stove_datetime,
+            DATA_DATE_TIME: stove_datetime,
             DATA_TIME_TO_NEW_FIRE_WOOD: time_to_refuel,
             DATA_UPDATING: data[DATA_UPDATING],
             DATA_VALVE1_POSITION: data[DATA_VALVE1_POSITION],
@@ -164,16 +179,54 @@ class pystove():
     async def set_burn_level(self, burn_level):
         """Set the desired burnlevel."""
         data = { DATA_LEVEL: burn_level }
-        json_str = self._post('http://' + self.stove_host
+        json_str = await self._post('http://' + self.stove_host
                               + STOVE_BURN_LEVEL_URL, data)
-        return json.loads(json_str)[DATA_RESPONSE] == "OK"
+        return json.loads(json_str)[DATA_RESPONSE] == RESPONSE_OK
+
+    async def set_night_lowering(self, state=None):
+        """Switch/toggle night lowering (True=on, False=off, None=toggle)."""
+        if state is None:
+            data = await self.get_raw_data()
+            # 0 == Off
+            # 2 == On outside night hours
+            # 3 == On inside night hours
+            # When does night_lowering == 1 happen?
+            cur_state = data[DATA_NIGHT_LOWERING] > 0
+        else:
+            cur_state = not state
+        url = (STOVE_NIGHT_LOWERING_OFF_URL if cur_state
+               else STOVE_NIGHT_LOWERING_ON_URL)
+        json_str = await self._get('http://' + self.stove_host + url)
+        return json.loads(json_str)[DATA_RESPONSE] == RESPONSE_OK
+
+    async def set_night_lowering_hours(self, start=None, end=None):
+        """Set night lowering start and end time."""
+        if start is None or end is None:
+            data = await self.get_data()
+        start = start or data[DATA_NIGHT_BEGIN_TIME]
+        end = end or data[DATA_NIGHT_END_TIME]
+        data = {
+            DATA_BEGIN_HOUR: start.hour,
+            DATA_BEGIN_MINUTE: start.minute,
+            DATA_END_HOUR: end.hour,
+            DATA_END_MINUTE: end.minute,
+        }
+        json_str = await self._post('http://' + self.stove_host
+                                    + STOVE_NIGHT_TIME_URL, data)
+        return json.loads(json_str)[DATA_RESPONSE] == RESPONSE_OK
+
+    async def start(self):
+        """Start the ignition phase."""
+        json_str = await self._get('http://' + self.stove_host
+                                   + STOVE_START_URL)
+        return json.loads(json_str)[DATA_RESPONSE] == RESPONSE_OK
 
     async def _identify(self):
         """Get identification and set the properties on the object."""
         json_str = await self._get('http://' + self.stove_host + STOVE_ID_URL)
-        id = json.loads(json_str)
-        self.name = id[DATA_NAME]
-        self.stove_ip = id[DATA_IP]
+        stove_id = json.loads(json_str)
+        self.name = stove_id[DATA_NAME]
+        self.stove_ip = stove_id[DATA_IP]
 
     async def _get(self, url):
         """Get data from url, return response."""
@@ -182,15 +235,16 @@ class pystove():
 
     async def _post(self, url, data):
         """Post data to url, return response."""
-        async with self._session.post(url, data=json.dumps(data)) as response:
+        async with self._session.post(
+                url, data=json.dumps(data, separators=(',', ':'))) as response:
             return await response.text()
 
 
 async def get_data(stove_host, loop=asyncio.get_event_loop()):
     stv = await pystove.create(stove_host, loop)
-    data = await stv.get_data()
-    print(stv.name)
-    print(json.dumps(data, indent=1))
+    print(await stv.get_data())
+    await stv.set_night_lowering_hours(start=time(hour=23, minute=30))
+    print(await stv.get_data())
     await stv.destroy()
 
 if __name__ == '__main__':
