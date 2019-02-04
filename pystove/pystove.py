@@ -512,6 +512,13 @@ if __name__ == '__main__':
         print("   start")
         print("     Set the stove in ignition mode.")
         print()
+        print("    set_time")
+        print("      Set the time on the stove. Defaults to current"
+              " time on this system.")
+        print("      Optional value format: YYYY-MM-DD HH:MM:SS")
+        print()
+        print("    self_test")
+        print("      Run stove self test routine and return result.")
         sys.exit()
 
     command = None
