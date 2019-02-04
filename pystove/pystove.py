@@ -19,11 +19,14 @@
 import asyncio
 import json
 import logging
+import re
 import sys
 import xml.etree.ElementTree as ET
 from datetime import datetime, time, timedelta
 
 import aiohttp
+
+from version import __version__
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -120,7 +123,8 @@ class pystove():
     """Abstraction of a pystove object."""
 
     @classmethod
-    async def create(cls, stove_host, loop=asyncio.get_event_loop()):
+    async def create(cls, stove_host, loop=asyncio.get_event_loop(),
+                     skip_ident=False):
         """Async create the pystove object."""
         self = cls()
         self.loop = loop
@@ -132,7 +136,8 @@ class pystove():
         self.stove_ssid = UNKNOWN
         self.version = UNKNOWN
         self._session = aiohttp.ClientSession(headers=HTTP_HEADERS)
-        await self._identify()
+        if not skip_ident:
+            await self._identify()
         return self
 
     async def destroy(self):
@@ -202,7 +207,7 @@ class pystove():
         data = { DATA_LEVEL: burn_level }
         json_str = await self._post('http://' + self.stove_host
                               + STOVE_BURN_LEVEL_URL, data)
-        return json.loads(json_str)[DATA_RESPONSE] == RESPONSE_OK
+        return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
 
     async def set_night_lowering(self, state=None):
         """Switch/toggle night lowering (True=on, False=off, None=toggle)."""
@@ -218,7 +223,7 @@ class pystove():
         url = (STOVE_NIGHT_LOWERING_OFF_URL if cur_state
                else STOVE_NIGHT_LOWERING_ON_URL)
         json_str = await self._get('http://' + self.stove_host + url)
-        return json.loads(json_str)[DATA_RESPONSE] == RESPONSE_OK
+        return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
 
     async def set_night_lowering_hours(self, start=None, end=None):
         """Set night lowering start and end time."""
@@ -234,7 +239,7 @@ class pystove():
         }
         json_str = await self._post('http://' + self.stove_host
                                     + STOVE_NIGHT_TIME_URL, data)
-        return json.loads(json_str)[DATA_RESPONSE] == RESPONSE_OK
+        return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
 
     async def set_remote_refill_alarm(self, state=None):
         """Set or toggle remote_refill_alarm setting."""
@@ -246,13 +251,13 @@ class pystove():
         data = { DATA_ENABLE: 0 if cur_state else 1 }
         json_str = await self._post('http://' + self.stove_host
                                    + STOVE_REMOTE_REFILL_ALARM_URL, data)
-        return json.loads(json_str)[DATA_RESPONSE] == RESPONSE_OK
+        return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
 
     async def start(self):
         """Start the ignition phase."""
         json_str = await self._get('http://' + self.stove_host
                                    + STOVE_START_URL)
-        return json.loads(json_str)[DATA_RESPONSE] == RESPONSE_OK
+        return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
 
     async def _identify(self):
         """Get identification and set the properties on the object."""
@@ -276,7 +281,7 @@ class pystove():
                 _LOGGER.warning("Unable to read stove SSID.")
                 return
             stove_ssid = json.loads(json_str)
-            self.ssid = stove_ssid[DATA_SSID]
+            self.stove_ssid = stove_ssid[DATA_SSID]
 
         async def get_version_info():
             """Get stove version info."""
@@ -327,16 +332,209 @@ class pystove():
             _LOGGER.error("Could not connect to stove.")
 
 
-async def get_data(stove_host, loop=asyncio.get_event_loop()):
-    stv = await pystove.create(stove_host, loop)
-    print(stv.full_version)
-    print(stv.series)
-    print(stv.version)
+async def run_command(stove_host, command, value, loop, fast_mode):
+    """Run the app with the specified command."""
+
+    async def execute(command, value):
+        """Execute the command."""
+        if command is None:
+            return
+
+        supported_commands = [
+            'get_data',
+            'get_raw_data',
+            'set_burn_level',
+            'set_night_lowering',
+            'set_night_lowering_hours',
+            'set_remote_refill_alarm',
+            'start',
+            ]
+
+        if command not in supported_commands:
+            print("Command not supported: {}".format(command))
+            return
+
+        if command == 'get_data':
+            data = await stv.get_data()
+            for k, v in data.items():
+                print("{}: {}".format(k, v))
+        elif command == 'get_raw_data':
+            data = await stv.get_raw_data()
+            for k, v in data.items():
+                print("{}: {}".format(k, v))
+        elif command == 'set_burn_level':
+            try:
+                value = int(value)
+            except ValueError:
+                print("Invalid value: {}".format(value))
+                return
+            if 0 <= value <= 5:
+                if await stv.set_burn_level(value):
+                    result = await stv.get_data()
+                    if result:
+                        print("Burn level set to {}.".format(
+                            result[DATA_BURN_LEVEL]))
+                    else:
+                        print("Unable to confirm success.")
+                else:
+                    print("Setting burn level failed!")
+            else:
+                print("Invalid value: {}".format(value))
+        elif command == 'set_night_lowering':
+            if value is not None:
+                value = value.lower() in ('1', 'on')
+            if await stv.set_night_lowering(value):
+                result = await stv.get_raw_data()
+                if result:
+                    print("Night lowering switched {}.".format(
+                        'on' if result[DATA_NIGHT_LOWERING] else 'off'))
+                else:
+                    print("Unable to confirm success.")
+            else:
+                print("Setting night lowering failed.")
+        elif command == 'set_night_lowering_hours':
+            if value is None:
+                print("Value required. Format: <start>-<end>")
+                print("<start> and <end> must be in format H[:MM]")
+                print("Example: '22-7:30'")
+                return
+            pat = re.compile(r'^(?P<start_hr>\d+|[01]\d|2[0-3])'
+                             '(?::(?P<start_min>[0-5]\d))?-'
+                             '(?P<end_hr>\d+|[01]\d|2[0-3])'
+                             '(?::(?P<end_min>[0-5]\d))?$')
+            match = pat.match(value)
+            if not match:
+                print("Invalid value format. Expected: <start>-<end>")
+                print("<start> and <end> must be in format H[:MM]")
+                print("Example: '22-7:30'")
+                return
+            span = {}
+            for k, v in match.groupdict(default=0).items():
+                span[k] = int(v)
+            start = time(hour=span['start_hr'], minute=span['start_min'])
+            end = time(hour=span['end_hr'], minute=span['end_min'])
+            if await stv.set_night_lowering_hours(start=start, end=end):
+                result = await stv.get_data()
+                if result:
+                    print("Night lowering hours set.")
+                    print("Start: {}".format(result[DATA_NIGHT_BEGIN_TIME]))
+                    print("End: {}".format(result[DATA_NIGHT_END_TIME]))
+                else:
+                    print("Unable to confirm success.")
+            else:
+                print("Setting night lowering hours failed.")
+        elif command == 'set_remote_refill_alarm':
+            if value is not None:
+                value = value.lower() in ('1', 'on')
+            if await stv.set_remote_refill_alarm(value):
+                result = await stv.get_raw_data()
+                if result:
+                    print("Remote refill alarm switched {}.".format(
+                        'on' if result[DATA_REMOTE_REFILL_ALARM] else 'off'))
+                else:
+                    print("Unable to confirm success.")
+            else:
+                print("Setting remote refill alarm failed.")
+        elif command == 'start':
+            if await stv.start():
+                print("Stove ready for start.")
+            else:
+                print("Stove failed to start.")
+
+    stv = await pystove.create(stove_host, loop, skip_ident=fast_mode)
+
+    print("Stove:\t\t{}".format(stv.name))
+    print("Model:\t\t{} Series".format(stv.series))
+    print("Host:\t\t{}".format(stv.stove_host))
+    print("IP:\t\t{}".format(stv.stove_ip))
+    print("SSID:\t\t{}".format(stv.stove_ssid))
+    print("Version:\t{}".format(stv.full_version))
+    print()
+
+    await execute(command, value)
     await stv.destroy()
+
 
 if __name__ == '__main__':
     """Handle direct invocation from command line."""
-    stove_host = sys.argv[1]
+    import getopt
+
+    print("pystove {}".format(__version__))
+    print()
+
+    def print_help():
+        """Print help message."""
+        print("Usage: {} <options>".format(sys.argv[0]))
+        print()
+        print("Options:")
+        print()
+        print("  -h, --host <HOST>\t\tRequired")
+        print("    The IP address or hostname of the stove.")
+        print()
+        print("  -f, --fast\t\t\tOptional")
+        print("    Run in fast mode (skip ident).")
+        print()
+        print("  -c, --command <COMMAND>\tOptional")
+        print("    The command to send to the stove.")
+        print()
+        print("  -v, --value <VALUE>\t\tOptional")
+        print("    The value to send to the stove with the supplied command.")
+        print()
+        print()
+        print("Supported commands:")
+        print()
+        print("  get_data")
+        print("    Retrieve a list of processed configuration values.")
+        print()
+        print("  get_raw_data")
+        print("    Retrieve a list of unprocessed configuration values.")
+        print()
+        print("  set_burn_level")
+        print("    Set the burn level of the stove.")
+        print("    This command requires a value between 0 and 5.")
+        print()
+        print("  set_night_lowering")
+        print("    Set the night lowering option.")
+        print("    This command takes an optional value: 1=on, 0=off")
+        print("    A call without value toggles the setting.")
+        print()
+        print("  set_night_lowering_hours")
+        print("    Set the night lowering hours on the stove.")
+        print("    This command requires a <value> in the form of"
+              " <start>-<end>")
+        print("    Both <start> and <end> must be in 24h format H[:MM]")
+        print()
+        print("  set_remote_refill_alarm")
+        print("    Set the remote refill alarm.")
+        print("    This command takes an optional value: 1=on, 0=off")
+        print("    A call without value toggles the setting.")
+        print()
+        print("   start")
+        print("     Set the stove in ignition mode.")
+        print()
+        sys.exit()
+
+    command = None
+    fast_mode = False
+    stove_host = None
+    value = None
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "c:fh:v:",
+                                   ['command=', 'fast', 'host=', 'value='])
+    except getopt.GetoptError:
+        print_help()
+    for opt, arg in opts:
+        if opt in ('-c', '--command'):
+            command = arg
+        elif opt in ('-f', '--fast'):
+            fast_mode = True
+        elif opt in ('-h', '--host'):
+            stove_host = arg
+        elif opt in ('-v' '--value'):
+            value = arg
+    if stove_host is None:
+        print_help()
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(get_data(stove_host, loop))
+    loop.run_until_complete(run_command(stove_host, command, value, loop,
+                                        fast_mode))
 
