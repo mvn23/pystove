@@ -71,6 +71,12 @@ DATA_SAFETY_ALARMS = 'safety_alarms'
 DATA_SSID = 'ssid'
 DATA_STOVE_TEMPERATURE = 'stove_temperature'
 DATA_SUCCESS = 'success'
+DATA_TEST_CONFIGURATION = 'configuration'
+DATA_TEST_O2_SENSOR = 'o2_sensor'
+DATA_TEST_TEMP_SENSOR = 't10_sensor'
+DATA_TEST_VALVE1 = 'valve_primary'
+DATA_TEST_VALVE2 = 'valve_secondary'
+DATA_TEST_VALVE3 = 'valve_tertiary'
 DATA_TIME_SINCE_REMOTE_MSG = 'time_since_remote_msg'
 DATA_TIME_TO_NEW_FIRE_WOOD = 'time_to_new_fire_wood'
 DATA_UPDATING = 'updating'
@@ -94,11 +100,11 @@ HTTP_HEADERS = {
 }
 
 PHASE = [
-    'Ignition phase',
-    'Burn phase',
-    'Burn phase',
-    'Burn phase',
-    'Glow phase',
+    'Ignition',
+    'Burn',
+    'Burn',
+    'Burn',
+    'Glow',
     'Start'
 ]
 
@@ -114,6 +120,9 @@ STOVE_NIGHT_TIME_URL = '/set_night_time'
 STOVE_OPEN_FILE_URL = '/open_file'
 STOVE_READ_OPEN_FILE_URL = '/read_open_file'
 STOVE_REMOTE_REFILL_ALARM_URL = '/set_remote_refill_alarm'
+STOVE_SET_TIME_URL = '/set_time'
+STOVE_SELFTEST_RESULT_URL = '/get_selftest_result'
+STOVE_SELFTEST_START_URL = '/start_selftest'
 STOVE_START_URL = '/start'
 
 UNKNOWN = 'Unknown'
@@ -202,6 +211,35 @@ class pystove():
         data = json.loads(json_str)
         return data
 
+    async def self_test(self, processed=True):
+        """Run self test routine, return result dict."""
+        if await self._self_test_start():
+            values = [
+                '',
+                'OK',
+                'Busy',
+                'Skipped',
+                ]
+            def process_dict(in_dict):
+                """Process dict values."""
+                if not processed:
+                    return in_dict
+                out_dict = {}
+                for k, v in in_dict.items():
+                    out_dict[k] = values[v]
+                return out_dict
+            while True:
+                intermediate_raw = await self._self_test_result()
+                if intermediate_raw is None:
+                    yield None
+                intermediate = process_dict(intermediate_raw)
+                yield intermediate
+                if not 2 in intermediate_raw.values():
+                    break
+                await asyncio.sleep(3)
+        else:
+            yield None
+
     async def set_burn_level(self, burn_level):
         """Set the desired burnlevel."""
         data = { DATA_LEVEL: burn_level }
@@ -251,6 +289,20 @@ class pystove():
         data = { DATA_ENABLE: 0 if cur_state else 1 }
         json_str = await self._post('http://' + self.stove_host
                                    + STOVE_REMOTE_REFILL_ALARM_URL, data)
+        return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
+
+    async def set_time(self, new_time=datetime.now()):
+        """Set the time and date of the stove."""
+        data = {
+            'year': new_time.year,
+            'month': new_time.month - 1,  # Stove month input is 0 based.
+            'day': new_time.day,
+            'hours': new_time.hour,
+            'minutes': new_time.minute,
+            'seconds': new_time.second,
+        }
+        json_str = await self._post('http://' + self.stove_host
+                                    + STOVE_SET_TIME_URL, data)
         return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
 
     async def start(self):
@@ -314,6 +366,29 @@ class pystove():
             get_version_info(),
         ])
 
+    async def _self_test_result(self):
+        """Get self test result."""
+        count = 0
+        result = None
+        while True:
+            # Error prone, retry up to 3 times
+            json_str = await self._get('http://' + self.stove_host
+                                       + STOVE_SELFTEST_RESULT_URL)
+            result = json.loads(json_str)
+            if not result.get('reponse'):  # NOT A TYPO!!!
+                break
+            if count >= 3:
+                return
+            count = count + 1
+            await asyncio.sleep(3)
+        return result
+
+    async def _self_test_start(self):
+        """Request self test start."""
+        json_str = await self._get('http://' + self.stove_host
+                                   + STOVE_SELFTEST_START_URL)
+        return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
+
     async def _get(self, url):
         """Get data from url, return response."""
         try:
@@ -343,10 +418,12 @@ async def run_command(stove_host, command, value, loop, fast_mode):
         supported_commands = [
             'get_data',
             'get_raw_data',
+            'self_test',
             'set_burn_level',
             'set_night_lowering',
             'set_night_lowering_hours',
             'set_remote_refill_alarm',
+            'set_time',
             'start',
             ]
 
@@ -362,6 +439,43 @@ async def run_command(stove_host, command, value, loop, fast_mode):
             data = await stv.get_raw_data()
             for k, v in data.items():
                 print("{}: {}".format(k, v))
+        elif command == 'self_test':
+            import math
+            async for res in stv.self_test():
+                if res is None:
+                    print("\nHTTP response timed out.")
+                    return
+
+                conf_length = len('Config: {}'.format(
+                    res[DATA_TEST_CONFIGURATION]))
+                conf_spaces = (15-conf_length) * ' '
+
+                temp_length = len('Temp: {}'.format(
+                    res[DATA_TEST_TEMP_SENSOR]))
+                temp_spaces = (13-temp_length) * ' '
+
+                o2_length = len('O2: {}'.format(res[DATA_TEST_O2_SENSOR]))
+                o2_spaces = (11-o2_length) * ' '
+
+                v1_length = len('Valve1: {}'.format(res[DATA_TEST_VALVE1]))
+                v1_spaces = (15-v1_length) * ' '
+
+                v2_length = len('Valve2: {}'.format(res[DATA_TEST_VALVE2]))
+                v2_spaces = (15-v2_length) * ' '
+
+                v3_length = len('Valve3: {}'.format(res[DATA_TEST_VALVE3]))
+                v3_spaces = (15-v3_length) * ' '
+
+                sys.stdout.write('Config: {}{} | Temp: {}{} | O2: {}{} |'
+                                 ' Valve1: {}{} | Valve2: {}{} |'
+                                 ' Valve3: {}{}\r'.format(
+                                     res[DATA_TEST_CONFIGURATION], conf_spaces,
+                                     res[DATA_TEST_TEMP_SENSOR], temp_spaces,
+                                     res[DATA_TEST_O2_SENSOR], o2_spaces,
+                                     res[DATA_TEST_VALVE1], v1_spaces,
+                                     res[DATA_TEST_VALVE2], v2_spaces,
+                                     res[DATA_TEST_VALVE3], v3_spaces))
+            print()
         elif command == 'set_burn_level':
             try:
                 value = int(value)
@@ -435,6 +549,24 @@ async def run_command(stove_host, command, value, loop, fast_mode):
                     print("Unable to confirm success.")
             else:
                 print("Setting remote refill alarm failed.")
+        elif command == 'set_time':
+            if value is not None:
+                try:
+                    new_time = datetime.strptime(value, '%Y-%m-%d %H:%M:%S')
+                except ValueError:
+                    print("Invalid time format: {}".format(value))
+                    return
+            else:
+                new_time = datetime.now()
+            if await stv.set_time(new_time):
+                result = await stv.get_data()
+                if result:
+                    print("Stove time set to {}".format(
+                        result[DATA_DATE_TIME]))
+                else:
+                    print("Unable to verify success.")
+            else:
+                print("Failed to set the time on the stove.")
         elif command == 'start':
             if await stv.start():
                 print("Stove ready for start.")
@@ -532,9 +664,9 @@ if __name__ == '__main__':
             stove_host = arg
         elif opt in ('-v' '--value'):
             value = arg
+    loop = asyncio.get_event_loop()
     if stove_host is None:
         print_help()
-    loop = asyncio.get_event_loop()
     loop.run_until_complete(run_command(stove_host, command, value, loop,
                                         fast_mode))
 
