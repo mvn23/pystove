@@ -18,23 +18,30 @@
 
 import asyncio
 import json
+import logging
 import sys
+import xml.etree.ElementTree as ET
 from datetime import datetime, time, timedelta
 
 import aiohttp
 
 
+_LOGGER = logging.getLogger(__name__)
+
 DATA_ALGORITHM = 'algorithm'
 DATA_BEGIN_HOUR = 'begin_hour'
 DATA_BEGIN_MINUTE = 'begin_minute'
+DATA_ENABLE = 'enable'
 DATA_END_HOUR = 'end_hour'
 DATA_END_MINUTE = 'end_minute'
 DATA_BURN_LEVEL = 'burn_level'
 DATA_DATE_TIME = 'date_time'
+DATA_FILENAME = 'file_name'
 DATA_IP = 'ip'
 DATA_LEVEL = 'level'
 DATA_MAINTENANCE_ALARMS = 'maintenance_alarms'
 DATA_MESSAGE_ID = 'message_id'
+DATA_MODE = 'mode'
 DATA_NAME = 'name'
 DATA_NEW_FIREWOOD_ESTIMATE = 'new_fire_wood_estimate'
 DATA_NEW_FIREWOOD_HOURS = 'new_fire_wood_hours'
@@ -58,7 +65,9 @@ DATA_REMOTE_VERSION_MINOR = 'remote_version_minor'
 DATA_RESPONSE = 'response'
 DATA_ROOM_TEMPERATURE = 'room_temperature'
 DATA_SAFETY_ALARMS = 'safety_alarms'
+DATA_SSID = 'ssid'
 DATA_STOVE_TEMPERATURE = 'stove_temperature'
+DATA_SUCCESS = 'success'
 DATA_TIME_SINCE_REMOTE_MSG = 'time_since_remote_msg'
 DATA_TIME_TO_NEW_FIRE_WOOD = 'time_to_new_fire_wood'
 DATA_UPDATING = 'updating'
@@ -92,13 +101,19 @@ PHASE = [
 
 RESPONSE_OK = 'OK'
 
+STOVE_ACCESSPOINT_URL = '/esp/get_current_accesspoint'
 STOVE_BURN_LEVEL_URL = '/set_burn_level'
 STOVE_DATA_URL = '/get_stove_data'
 STOVE_ID_URL = '/esp/get_identification'
 STOVE_NIGHT_LOWERING_OFF_URL = '/set_night_lowering_off'
 STOVE_NIGHT_LOWERING_ON_URL = '/set_night_lowering_on'
 STOVE_NIGHT_TIME_URL = '/set_night_time'
+STOVE_OPEN_FILE_URL = '/open_file'
+STOVE_READ_OPEN_FILE_URL = '/read_open_file'
+STOVE_REMOTE_REFILL_ALARM_URL = '/set_remote_refill_alarm'
 STOVE_START_URL = '/start'
+
+UNKNOWN = 'Unknown'
 
 
 class pystove():
@@ -108,8 +123,14 @@ class pystove():
     async def create(cls, stove_host, loop=asyncio.get_event_loop()):
         """Async create the pystove object."""
         self = cls()
-        self.stove_host = stove_host
         self.loop = loop
+        self.stove_host = stove_host
+        self.full_version = UNKNOWN
+        self.name = UNKNOWN
+        self.series = UNKNOWN
+        self.stove_ip = UNKNOWN
+        self.stove_ssid = UNKNOWN
+        self.version = UNKNOWN
         self._session = aiohttp.ClientSession(headers=HTTP_HEADERS)
         await self._identify()
         return self
@@ -215,6 +236,18 @@ class pystove():
                                     + STOVE_NIGHT_TIME_URL, data)
         return json.loads(json_str)[DATA_RESPONSE] == RESPONSE_OK
 
+    async def set_remote_refill_alarm(self, state=None):
+        """Set or toggle remote_refill_alarm setting."""
+        if state is None:
+            data = await self.get_raw_data()
+            cur_state = data[DATA_REMOTE_REFILL_ALARM] == 1
+        else:
+            cur_state = not state
+        data = { DATA_ENABLE: 0 if cur_state else 1 }
+        json_str = await self._post('http://' + self.stove_host
+                                   + STOVE_REMOTE_REFILL_ALARM_URL, data)
+        return json.loads(json_str)[DATA_RESPONSE] == RESPONSE_OK
+
     async def start(self):
         """Start the ignition phase."""
         json_str = await self._get('http://' + self.stove_host
@@ -223,28 +256,82 @@ class pystove():
 
     async def _identify(self):
         """Get identification and set the properties on the object."""
-        json_str = await self._get('http://' + self.stove_host + STOVE_ID_URL)
-        stove_id = json.loads(json_str)
-        self.name = stove_id[DATA_NAME]
-        self.stove_ip = stove_id[DATA_IP]
+
+        async def get_name_and_ip():
+            """Get stove name and IP."""
+            json_str = await self._get('http://' + self.stove_host
+                                       + STOVE_ID_URL)
+            if json_str is None:
+                _LOGGER.warning("Unable to read stove name and IP.")
+                return
+            stove_id = json.loads(json_str)
+            self.name = stove_id[DATA_NAME]
+            self.stove_ip = stove_id[DATA_IP]
+
+        async def get_ssid():
+            """Get stove SSID."""
+            json_str = await self._get('http://' + self.stove_host
+                                       + STOVE_ACCESSPOINT_URL)
+            if json_str is None:
+                _LOGGER.warning("Unable to read stove SSID.")
+                return
+            stove_ssid = json.loads(json_str)
+            self.ssid = stove_ssid[DATA_SSID]
+
+        async def get_version_info():
+            """Get stove version info."""
+            data = {
+                DATA_FILENAME: 'info.xml',
+                DATA_MODE: 1
+            }
+            json_str = await self._post('http://' + self.stove_host
+                                        + STOVE_OPEN_FILE_URL, data)
+            if json_str is None:
+                _LOGGER.warning("Unable to read stove version info.")
+                return
+            success = json.loads(json_str)
+            if success[DATA_SUCCESS] == 1:
+                xml_str = await self._post('http://' + self.stove_host
+                                           + STOVE_READ_OPEN_FILE_URL, data)
+                try:
+                    xml_root = ET.fromstring(xml_str)
+                    self.full_version = xml_root.find('Name').text
+                    self.series = xml_root.find('StoveType').text
+                    self.version = xml_root.find('Version').text
+                except ET.ParseError:
+                    _LOGGER.warning("Invalid XML. Could not get version info.")
+                except AttributeError:
+                    _LOGGER.warning("Missing key in version info XML.")
+
+        await asyncio.gather(*[
+            get_name_and_ip(),
+            get_ssid(),
+            get_version_info(),
+        ])
 
     async def _get(self, url):
         """Get data from url, return response."""
-        async with self._session.get(url) as response:
-            return await response.text()
+        try:
+            async with self._session.get(url) as response:
+                return await response.text()
+        except aiohttp.client_exceptions.ClientConnectorError:
+            _LOGGER.error("Could not connect to stove.")
 
     async def _post(self, url, data):
         """Post data to url, return response."""
-        async with self._session.post(
-                url, data=json.dumps(data, separators=(',', ':'))) as response:
-            return await response.text()
+        try:
+            async with self._session.post(url, data=json.dumps(
+                    data, separators=(',', ':'))) as response:
+                return await response.text()
+        except aiohttp.client_exceptions.ClientConnectorError:
+            _LOGGER.error("Could not connect to stove.")
 
 
 async def get_data(stove_host, loop=asyncio.get_event_loop()):
     stv = await pystove.create(stove_host, loop)
-    print(await stv.get_data())
-    await stv.set_night_lowering_hours(start=time(hour=23, minute=30))
-    print(await stv.get_data())
+    print(stv.full_version)
+    print(stv.series)
+    print(stv.version)
     await stv.destroy()
 
 if __name__ == '__main__':
