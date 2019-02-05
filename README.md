@@ -63,9 +63,9 @@ Short version of the stove. Most likely the last 6 digits of `Stove.full_version
 #### @classmethod Stove.create(_cls_, stove_host, loop=asyncio.get_event_loop(), skip_ident=False)
 Create a pystove object asynchronously. This method takes the following arguments:
 
-__stove_host__ The hostname or IP address of the stove.
-__loop__ Event loop to use for the pystove object.
-__skip_ident__ Skip identification calls to the stove. Speeds up creation of the pystove object but the resulting object will be missing its identifying information.
+- __stove_host__ The hostname or IP address of the stove.
+- __loop__ Event loop to use for the pystove object.
+- __skip_ident__ Skip identification calls to the stove. Speeds up creation of the pystove object but the resulting object will be missing its identifying information.
 
 Returns a pystove object with at least the `stove_host` property set. If `skip_ident` was set to `False` (the default), all other properties should be set as well
 
@@ -92,7 +92,7 @@ This method is a coroutine.
 Start and monitor the self-test routine of the stove. This method will request and return intermediate results every 3 seconds until all tests have either been passed or skipped.
 The following argument is supported:
 
-__processed__ Whether the results should be processed into human-readable form. Defaults to `True`.
+- __processed__ Whether the results should be processed into human-readable form. Defaults to `True`.
 
 This method is a generator coroutine.
 
@@ -100,7 +100,7 @@ This method is a generator coroutine.
 Set the burn level on the stove. Returns `True` on success.
 This method takes the following argument:
 
-__burn_level__ The burn level to set on the stove. Supported values are 0 through 5.
+- __burn_level__ The burn level to set on the stove. Supported values are 0 through 5.
 
 This method is a coroutine.
 
@@ -108,7 +108,7 @@ This method is a coroutine.
 Set or toggle the night lowering option on the stove. Returns `True` on success.
 This method takes the following argument:
 
-__state__ The new night lowering setting to set on the stove. Supported values must evaluate to `True` or `False`. If omitted or `None` (the default), the setting will be toggled.
+- __state__ The new night lowering setting to set on the stove. Supported values must evaluate to `True` or `False`. If omitted or `None` (the default), the setting will be toggled.
 
 This method is a coroutine.
 
@@ -116,8 +116,8 @@ This method is a coroutine.
 Set the night lowering hours on the stove. Returns `True` on success.
 This method takes the following arguments:
 
-__start__ A `datetime.time` object containing the requested night lowering start time. If omitted or `None`, the start time will not be changed.
-__end__ A `datetime.time` object containing the requested night lowering end time. If omitted or `None`, the end time will not be changed.
+- __start__ A `datetime.time` object containing the requested night lowering start time. If omitted or `None`, the start time will not be changed.
+- __end__ A `datetime.time` object containing the requested night lowering end time. If omitted or `None`, the end time will not be changed.
 
 This method is a coroutine.
 
@@ -125,7 +125,7 @@ This method is a coroutine.
 Set the remote refill alarm. Returns `True` on success.
 This method takes the following argument:
 
-__state__ The new remote refill alarm setting to set on the stove. Supported values must evaluate to `True` or `False`. If omitted or `None` (the default), the setting will be toggled.
+- __state__ The new remote refill alarm setting to set on the stove. Supported values must evaluate to `True` or `False`. If omitted or `None` (the default), the setting will be toggled.
 
 This method is a coroutine.
 
@@ -133,7 +133,7 @@ This method is a coroutine.
 Set the time and date on the stove. Returns `True` on success.
 This method takes the following argument:
 
-__new_time__ A `datetime.datetime` object containing the time and date to set on the stove. If omitted, the current time on the local host will be used.
+- __new_time__ A `datetime.datetime` object containing the time and date to set on the stove. If omitted, the current time on the local host will be used.
 
 This method is a coroutine.
 
