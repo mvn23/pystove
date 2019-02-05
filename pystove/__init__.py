@@ -15,4 +15,5 @@
 #
 # Copyright 2019 Milan van Nugteren
 #
-from pystove import pystove
+from .pystove import Stove
+from .version import __version__
