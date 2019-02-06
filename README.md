@@ -31,7 +31,7 @@ async def switch_on_stove():
     await stove.set_burn_level(5)
 
   # Clean up
-  stove.destroy()
+  await stove.destroy()
 
 # Set up the event loop and run the switch_on_stove coroutine.
 loop = asyncio.get_event_loop()
