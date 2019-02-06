@@ -208,8 +208,8 @@ async def run_command(stove_host, command, value, loop):
                 print("Stove ready for start.")
             else:
                 print("Stove failed to start.")
-	
-    stv = await Stove.create(stove_host, loop, 
+
+    stv = await Stove.create(stove_host, loop,
                              skip_ident=command != 'show_info')
     await execute(command, value)
     await stv.destroy()
@@ -301,4 +301,3 @@ if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     loop.run_until_complete(
         run_command(stove_host, command, value, loop))
-

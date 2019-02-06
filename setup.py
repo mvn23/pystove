@@ -1,10 +1,12 @@
 import os
-from setuptools import setup
 import sys
+from setuptools import setup
+
+from version import __version__
+
 
 sys.path[0:0] = ['pystove']
 
-from version import __version__
 
 def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()

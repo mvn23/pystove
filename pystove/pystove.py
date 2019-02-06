@@ -152,14 +152,14 @@ class Stove():
         data = await self.get_raw_data()
         phase = PHASE[data[DATA_PHASE]]
         stove_datetime = datetime(data[DATA_YEAR], data[DATA_MONTH],
-                                  data[DATA_DAY], data[DATA_HOURS] ,
+                                  data[DATA_DAY], data[DATA_HOURS],
                                   data[DATA_MINUTES], data[DATA_SECONDS])
         time_to_refuel = timedelta(hours=data[DATA_NEW_FIREWOOD_HOURS],
                                    minutes=data[DATA_NEW_FIREWOOD_MINUTES])
         refuel_estimate = stove_datetime + time_to_refuel
-        nighttime_start = time(hour=data[DATA_NIGHT_BEGIN_HOUR], 
+        nighttime_start = time(hour=data[DATA_NIGHT_BEGIN_HOUR],
                                minute=data[DATA_NIGHT_BEGIN_MINUTE])
-        nighttime_end = time(hour=data[DATA_NIGHT_END_HOUR], 
+        nighttime_end = time(hour=data[DATA_NIGHT_END_HOUR],
                              minute=data[DATA_NIGHT_END_MINUTE])
         stove_version = "{}.{}.{}".format(data[DATA_VERSION_MAJOR],
                                           data[DATA_VERSION_MINOR],
@@ -168,7 +168,7 @@ class Stove():
                                            data[DATA_REMOTE_VERSION_MINOR],
                                            data[DATA_REMOTE_VERSION_BUILD])
         for item in (DATA_STOVE_TEMPERATURE, DATA_ROOM_TEMPERATURE,
-                DATA_OXYGEN_LEVEL):
+                     DATA_OXYGEN_LEVEL):
             data[item] = data[item]/100
         processed_data = {
             DATA_ALGORITHM: data[DATA_ALGORITHM],
@@ -215,6 +215,7 @@ class Stove():
                 'Busy',
                 'Skipped',
                 ]
+
             def process_dict(in_dict):
                 """Process dict values."""
                 if not processed:
@@ -229,7 +230,7 @@ class Stove():
                     yield None
                 intermediate = process_dict(intermediate_raw)
                 yield intermediate
-                if not 2 in intermediate_raw.values():
+                if 2 not in intermediate_raw.values():
                     break
                 await asyncio.sleep(3)
         else:
@@ -237,9 +238,9 @@ class Stove():
 
     async def set_burn_level(self, burn_level):
         """Set the desired burnlevel."""
-        data = { DATA_LEVEL: burn_level }
+        data = {DATA_LEVEL: burn_level}
         json_str = await self._post('http://' + self.stove_host
-                              + STOVE_BURN_LEVEL_URL, data)
+                                    + STOVE_BURN_LEVEL_URL, data)
         return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
 
     async def set_night_lowering(self, state=None):
@@ -281,9 +282,9 @@ class Stove():
             cur_state = data[DATA_REMOTE_REFILL_ALARM] == 1
         else:
             cur_state = not state
-        data = { DATA_ENABLE: 0 if cur_state else 1 }
+        data = {DATA_ENABLE: 0 if cur_state else 1}
         json_str = await self._post('http://' + self.stove_host
-                                   + STOVE_REMOTE_REFILL_ALARM_URL, data)
+                                    + STOVE_REMOTE_REFILL_ALARM_URL, data)
         return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
 
     async def set_time(self, new_time=datetime.now()):
