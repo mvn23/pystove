@@ -79,7 +79,7 @@ DATA_UPDATING = 'updating'
 DATA_VALVE1_POSITION = 'valve1_position'
 DATA_VALVE2_POSITION = 'valve2_position'
 DATA_VALVE3_POSITION = 'valve3_position'
-DATA_VERSION = 'version'
+DATA_VERSION = 'firmware_version'
 DATA_VERSION_BUILD = 'version_build'
 DATA_VERSION_MAJOR = 'version_major'
 DATA_VERSION_MINOR = 'version_minor'
@@ -134,12 +134,11 @@ class Stove():
         self = cls()
         self._loop = loop
         self.stove_host = stove_host
-        self.full_version = UNKNOWN
+        self.algo_version = UNKNOWN
         self.name = UNKNOWN
         self.series = UNKNOWN
         self.stove_ip = UNKNOWN
         self.stove_ssid = UNKNOWN
-        self.version = UNKNOWN
         self._session = aiohttp.ClientSession(headers=HTTP_HEADERS)
         if not skip_ident:
             await self._identify()
@@ -348,9 +347,8 @@ class Stove():
                                            + STOVE_READ_OPEN_FILE_URL, data)
                 try:
                     xml_root = ET.fromstring(xml_str)
-                    self.full_version = xml_root.find('Name').text
+                    self.algo_version = xml_root.find('Name').text
                     self.series = xml_root.find('StoveType').text
-                    self.version = xml_root.find('Version').text
                 except ET.ParseError:
                     _LOGGER.warning("Invalid XML. Could not get version info.")
                 except AttributeError:

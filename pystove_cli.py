@@ -33,7 +33,7 @@ from pystove.pystove import (
 from pystove.version import __version__
 
 
-async def run_command(stove_host, command, value, loop, fast_mode):
+async def run_command(stove_host, command, value, loop):
     """Run the app with the specified command."""
 
     async def execute(command, value):
@@ -50,6 +50,7 @@ async def run_command(stove_host, command, value, loop, fast_mode):
             'set_night_lowering_hours',
             'set_remote_refill_alarm',
             'set_time',
+            'show_info',
             'start',
             ]
 
@@ -192,22 +193,24 @@ async def run_command(stove_host, command, value, loop, fast_mode):
                     print("Unable to verify success.")
             else:
                 print("Failed to set the time on the stove.")
+        elif command == 'show_info':
+            print("pystove {}".format(__version__))
+            print()
+            print("Stove:\t\t{}".format(stv.name))
+            print("Model:\t\t{} Series".format(stv.series))
+            print("Host:\t\t{}".format(stv.stove_host))
+            print("IP:\t\t{}".format(stv.stove_ip))
+            print("SSID:\t\t{}".format(stv.stove_ssid))
+            print("Algo Version:\t{}".format(stv.algo_version))
+            print()
         elif command == 'start':
             if await stv.start():
                 print("Stove ready for start.")
             else:
                 print("Stove failed to start.")
-
-    stv = await Stove.create(stove_host, loop, skip_ident=fast_mode)
-    if not fast_mode:
-        print("Stove:\t\t{}".format(stv.name))
-        print("Model:\t\t{} Series".format(stv.series))
-        print("Host:\t\t{}".format(stv.stove_host))
-        print("IP:\t\t{}".format(stv.stove_ip))
-        print("SSID:\t\t{}".format(stv.stove_ssid))
-        print("Version:\t{}".format(stv.full_version))
-        print()
-
+	
+    stv = await Stove.create(stove_host, loop, 
+                             skip_ident=command != 'show_info')
     await execute(command, value)
     await stv.destroy()
 
@@ -215,9 +218,6 @@ async def run_command(stove_host, command, value, loop, fast_mode):
 if __name__ == '__main__':
     """Handle direct invocation from command line."""
     import getopt
-
-    print("pystove {}".format(__version__))
-    print()
 
     def print_help():
         """Print help message."""
@@ -228,11 +228,9 @@ if __name__ == '__main__':
         print("  -h, --host <HOST>\t\tRequired")
         print("    The IP address or hostname of the stove.")
         print()
-        print("  -f, --fast\t\t\tOptional")
-        print("    Run in fast mode (skip ident).")
-        print()
         print("  -c, --command <COMMAND>\tOptional")
         print("    The command to send to the stove.")
+        print("    If no command is provided, it defaults to show_info.")
         print()
         print("  -v, --value <VALUE>\t\tOptional")
         print("    The value to send to the stove with the supplied command.")
@@ -245,6 +243,9 @@ if __name__ == '__main__':
         print()
         print("  get_raw_data")
         print("    Retrieve a list of unprocessed configuration values.")
+        print()
+        print("  self_test")
+        print("    Run stove self test routine and return result.")
         print()
         print("  set_burn_level")
         print("    Set the burn level of the stove.")
@@ -266,32 +267,31 @@ if __name__ == '__main__':
         print("    This command takes an optional value: 1=on, 0=off")
         print("    A call without value toggles the setting.")
         print()
-        print("  start")
-        print("    Set the stove in ignition mode.")
-        print()
         print("  set_time")
         print("    Set the time on the stove. Defaults to current"
               " time on this system.")
         print("    Optional value format: YYYY-MM-DD HH:MM:SS")
         print()
-        print("  self_test")
-        print("    Run stove self test routine and return result.")
+        print("  show_info")
+        print("    Show the stove identification information.")
+        print()
+        print("  start")
+        print("    Set the stove in ignition mode.")
+        print()
+
         sys.exit()
 
-    command = None
-    fast_mode = False
+    command = 'show_info'
     stove_host = None
     value = None
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "c:fh:v:",
-                                   ['command=', 'fast', 'host=', 'value='])
+        opts, args = getopt.getopt(sys.argv[1:], "c:h:v:",
+                                   ['command=', 'host=', 'value='])
     except getopt.GetoptError:
         print_help()
     for opt, arg in opts:
         if opt in ('-c', '--command'):
             command = arg
-        elif opt in ('-f', '--fast'):
-            fast_mode = True
         elif opt in ('-h', '--host'):
             stove_host = arg
         elif opt in ('-v' '--value'):
@@ -299,6 +299,6 @@ if __name__ == '__main__':
     if stove_host is None:
         print_help()
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(run_command(stove_host, command, value, loop,
-                                        fast_mode))
+    loop.run_until_complete(
+        run_command(stove_host, command, value, loop))
 

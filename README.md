@@ -43,8 +43,8 @@ loop.run_until_complete(switch_on_stove())
 
 ### Properties
 
-#### Stove.full_version
-The full version of the stove. `Algorithm version` in the HWAM Android app.
+#### Stove.algo_version
+The algorithm version of the stove.
 #### Stove.name
 The name of the stove as set during initial configuration.
 #### Stove.series
@@ -55,8 +55,6 @@ The hostname used during creation of the Stove object.
 The IP address as reported by the stove.
 #### Stove.stove_ssid
 The SSID to which the stove is connected.
-#### Stove.version
-Short version of the stove. Most likely the last 6 digits of `Stove.full_version`
 
 ### Methods
 
@@ -156,6 +154,7 @@ Options:
 
   -c, --command <COMMAND>	Optional
     The command to send to the stove.
+    If no command is provided, it defaults to show_info.
 
   -v, --value <VALUE>		Optional
     The value to send to the stove with the supplied command.
@@ -168,6 +167,9 @@ Supported commands:
 
   get_raw_data
     Retrieve a list of unprocessed configuration values.
+
+  self_test
+    Run stove self test routine and return result.
 
   set_burn_level
     Set the burn level of the stove.
@@ -188,13 +190,14 @@ Supported commands:
     This command takes an optional value: 1=on, 0=off
     A call without value toggles the setting.
 
-  start
-    Set the stove in ignition mode.
-
   set_time
     Set the time on the stove. Defaults to current time on this system.
     Optional value format: YYYY-MM-DD HH:MM:SS
 
-  self_test
-    Run stove self test routine and return result.
+  show_info
+    Show the stove identification information.
+
+  start
+    Set the stove in ignition mode.
+
 ```
