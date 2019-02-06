@@ -199,14 +199,14 @@ async def run_command(stove_host, command, value, loop, fast_mode):
                 print("Stove failed to start.")
 
     stv = await Stove.create(stove_host, loop, skip_ident=fast_mode)
-
-    print("Stove:\t\t{}".format(stv.name))
-    print("Model:\t\t{} Series".format(stv.series))
-    print("Host:\t\t{}".format(stv.stove_host))
-    print("IP:\t\t{}".format(stv.stove_ip))
-    print("SSID:\t\t{}".format(stv.stove_ssid))
-    print("Version:\t{}".format(stv.full_version))
-    print()
+    if not fast_mode:
+        print("Stove:\t\t{}".format(stv.name))
+        print("Model:\t\t{} Series".format(stv.series))
+        print("Host:\t\t{}".format(stv.stove_host))
+        print("IP:\t\t{}".format(stv.stove_ip))
+        print("SSID:\t\t{}".format(stv.stove_ssid))
+        print("Version:\t{}".format(stv.full_version))
+        print()
 
     await execute(command, value)
     await stv.destroy()
