@@ -80,6 +80,19 @@ Returns a dict containing processed information about the current state of the s
 
 This method is a coroutine.
 
+#### Stove.get_live_data(_self_)
+Retrieve a log of recent temperature and oxygen level data from the stove.
+Returns a dict with the following structure:
+```python
+{
+  pystove.DATA_STOVE_TEMPERATURE: [...],
+  pystove.DATA_OXYGEN_LEVEL: [...]
+}
+```
+Each item contains a sequential list with historical sensor data for each minute of the last 2 hours.
+
+This method is a coroutine.
+
 #### Stove.get_raw_data(_self_)
 Retrieve information about the current state of the stove.
 Returns a dict containing unprocessed information about the current state of the stove. All information is forwarded as provided by the stove.
@@ -164,6 +177,10 @@ Supported commands:
 
   get_data
     Retrieve a list of processed configuration values.
+
+  get_live_data:
+    Retrieve historical stove temperature and oxygen level
+    data from the last 2 hours.
 
   get_raw_data
     Retrieve a list of unprocessed configuration values.

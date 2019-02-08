@@ -21,14 +21,15 @@ import asyncio
 import re
 import sys
 
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 
 
 from pystove.pystove import (
-    DATA_TEST_CONFIGURATION, DATA_TEST_O2_SENSOR, DATA_TEST_TEMP_SENSOR,
-    DATA_TEST_VALVE1, DATA_TEST_VALVE2, DATA_TEST_VALVE3, DATA_BURN_LEVEL,
-    DATA_NIGHT_LOWERING, DATA_NIGHT_BEGIN_TIME, DATA_NIGHT_END_TIME,
-    DATA_REMOTE_REFILL_ALARM, DATA_DATE_TIME, Stove
+    DATA_BURN_LEVEL, DATA_DATE_TIME, DATA_NIGHT_LOWERING,
+    DATA_NIGHT_BEGIN_TIME, DATA_NIGHT_END_TIME, DATA_OXYGEN_LEVEL,
+    DATA_REMOTE_REFILL_ALARM, DATA_STOVE_TEMPERATURE, DATA_TEST_CONFIGURATION,
+    DATA_TEST_O2_SENSOR, DATA_TEST_TEMP_SENSOR, DATA_TEST_VALVE1,
+    DATA_TEST_VALVE2, DATA_TEST_VALVE3, Stove
     )
 from pystove.version import __version__
 
@@ -43,6 +44,7 @@ async def run_command(stove_host, command, value, loop):
 
         supported_commands = [
             'get_data',
+            'get_live_data',
             'get_raw_data',
             'self_test',
             'set_burn_level',
@@ -62,6 +64,17 @@ async def run_command(stove_host, command, value, loop):
             data = await stv.get_data()
             for k, v in data.items():
                 print("{}: {}".format(k, v))
+        elif command == 'get_live_data':
+            data = await stv.get_live_data()
+            point_in_time = datetime.now() - timedelta(minutes=120)
+            minute = timedelta(minutes=1)
+            print("Time\tTemperature\tOxygen")
+            for i in range(120):
+                print('{}\t{:11.2f}\t{:6.2f}'.format(
+                    point_in_time.strftime('%H:%M'),
+                    data[DATA_STOVE_TEMPERATURE][i],
+                    data[DATA_OXYGEN_LEVEL][i]))
+                point_in_time = point_in_time + minute
         elif command == 'get_raw_data':
             data = await stv.get_raw_data()
             for k, v in data.items():
@@ -71,36 +84,15 @@ async def run_command(stove_host, command, value, loop):
                 if res is None:
                     print("\nHTTP response timed out.")
                     return
-
-                conf_length = len('Config: {}'.format(
-                    res[DATA_TEST_CONFIGURATION]))
-                conf_spaces = (15-conf_length) * ' '
-
-                temp_length = len('Temp: {}'.format(
-                    res[DATA_TEST_TEMP_SENSOR]))
-                temp_spaces = (13-temp_length) * ' '
-
-                o2_length = len('O2: {}'.format(res[DATA_TEST_O2_SENSOR]))
-                o2_spaces = (11-o2_length) * ' '
-
-                v1_length = len('Valve1: {}'.format(res[DATA_TEST_VALVE1]))
-                v1_spaces = (15-v1_length) * ' '
-
-                v2_length = len('Valve2: {}'.format(res[DATA_TEST_VALVE2]))
-                v2_spaces = (15-v2_length) * ' '
-
-                v3_length = len('Valve3: {}'.format(res[DATA_TEST_VALVE3]))
-                v3_spaces = (15-v3_length) * ' '
-
-                sys.stdout.write('Config: {}{} | Temp: {}{} | O2: {}{} |'
-                                 ' Valve1: {}{} | Valve2: {}{} |'
-                                 ' Valve3: {}{}\r'.format(
-                                     res[DATA_TEST_CONFIGURATION], conf_spaces,
-                                     res[DATA_TEST_TEMP_SENSOR], temp_spaces,
-                                     res[DATA_TEST_O2_SENSOR], o2_spaces,
-                                     res[DATA_TEST_VALVE1], v1_spaces,
-                                     res[DATA_TEST_VALVE2], v2_spaces,
-                                     res[DATA_TEST_VALVE3], v3_spaces))
+                sys.stdout.write('Config: {:13} | Temp: {:13} | O2: {:13} |'
+                                 ' Valve1: {:13} | Valve2: {:13} |'
+                                 ' Valve3: {:13}\r'.format(
+                                     res[DATA_TEST_CONFIGURATION],
+                                     res[DATA_TEST_TEMP_SENSOR],
+                                     res[DATA_TEST_O2_SENSOR],
+                                     res[DATA_TEST_VALVE1],
+                                     res[DATA_TEST_VALVE2],
+                                     res[DATA_TEST_VALVE3]))
             print()
         elif command == 'set_burn_level':
             try:
@@ -139,9 +131,9 @@ async def run_command(stove_host, command, value, loop):
                 print("Example: '22-7:30'")
                 return
             pat = re.compile(r'^(?P<start_hr>\d+|[01]\d|2[0-3])'
-                             '(?::(?P<start_min>[0-5]\d))?-'
-                             '(?P<end_hr>\d+|[01]\d|2[0-3])'
-                             '(?::(?P<end_min>[0-5]\d))?$')
+                             r'(?::(?P<start_min>[0-5]\d))?-'
+                             r'(?P<end_hr>\d+|[01]\d|2[0-3])'
+                             r'(?::(?P<end_min>[0-5]\d))?$')
             match = pat.match(value)
             if not match:
                 print("Invalid value format. Expected: <start>-<end>")
@@ -240,6 +232,10 @@ if __name__ == '__main__':
         print()
         print("  get_data")
         print("    Retrieve a list of processed configuration values.")
+        print()
+        print("  get_live_data:")
+        print("    Retrieve historical stove temperature and oxygen level")
+        print("    data from the last 2 hours.")
         print()
         print("  get_raw_data")
         print("    Retrieve a list of unprocessed configuration values.")
