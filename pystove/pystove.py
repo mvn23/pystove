@@ -36,6 +36,10 @@ DATA_END_MINUTE = 'end_minute'
 DATA_BURN_LEVEL = 'burn_level'
 DATA_DATE_TIME = 'date_time'
 DATA_FILENAME = 'file_name'
+DATA_FIRMWARE_VERSION = 'firmware_version'
+DATA_FIRMWARE_VERSION_BUILD = 'version_build'
+DATA_FIRMWARE_VERSION_MAJOR = 'version_major'
+DATA_FIRMWARE_VERSION_MINOR = 'version_minor'
 DATA_IP = 'ip'
 DATA_LEVEL = 'level'
 DATA_MAINTENANCE_ALARMS = 'maintenance_alarms'
@@ -79,10 +83,6 @@ DATA_UPDATING = 'updating'
 DATA_VALVE1_POSITION = 'valve1_position'
 DATA_VALVE2_POSITION = 'valve2_position'
 DATA_VALVE3_POSITION = 'valve3_position'
-DATA_VERSION = 'firmware_version'
-DATA_VERSION_BUILD = 'version_build'
-DATA_VERSION_MAJOR = 'version_major'
-DATA_VERSION_MINOR = 'version_minor'
 
 DATA_YEAR = 'year'
 DATA_MONTH = 'month'
@@ -224,9 +224,9 @@ class Stove():
                                minute=data[DATA_NIGHT_BEGIN_MINUTE])
         nighttime_end = time(hour=data[DATA_NIGHT_END_HOUR],
                              minute=data[DATA_NIGHT_END_MINUTE])
-        stove_version = "{}.{}.{}".format(data[DATA_VERSION_MAJOR],
-                                          data[DATA_VERSION_MINOR],
-                                          data[DATA_VERSION_BUILD])
+        stove_version = "{}.{}.{}".format(data[DATA_FIRMWARE_VERSION_MAJOR],
+                                          data[DATA_FIRMWARE_VERSION_MINOR],
+                                          data[DATA_FIRMWARE_VERSION_BUILD])
         remote_version = "{}.{}.{}".format(data[DATA_REMOTE_VERSION_MAJOR],
                                            data[DATA_REMOTE_VERSION_MINOR],
                                            data[DATA_REMOTE_VERSION_BUILD])
@@ -258,7 +258,7 @@ class Stove():
             DATA_VALVE1_POSITION: data[DATA_VALVE1_POSITION],
             DATA_VALVE2_POSITION: data[DATA_VALVE2_POSITION],
             DATA_VALVE3_POSITION: data[DATA_VALVE3_POSITION],
-            DATA_VERSION: stove_version,
+            DATA_FIRMWARE_VERSION: stove_version,
         }
         return processed_data
 
