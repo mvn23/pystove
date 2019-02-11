@@ -24,7 +24,6 @@ from datetime import datetime, time, timedelta
 
 import aiohttp
 
-
 _LOGGER = logging.getLogger(__name__)
 
 DATA_ALGORITHM = 'algorithm'
