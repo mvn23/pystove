@@ -74,7 +74,7 @@ DATA_TEST_VALVE1 = 'valve_primary'
 DATA_TEST_VALVE2 = 'valve_secondary'
 DATA_TEST_VALVE3 = 'valve_tertiary'
 DATA_TIME_SINCE_REMOTE_MSG = 'time_since_remote_msg'
-DATA_TIME_TO_NEW_FIRE_WOOD = 'time_to_new_fire_wood'
+DATA_TIME_TO_NEW_FIREWOOD = 'time_to_new_fire_wood'
 DATA_UPDATING = 'updating'
 DATA_VALVE1_POSITION = 'valve1_position'
 DATA_VALVE2_POSITION = 'valve2_position'
@@ -133,7 +133,7 @@ PHASE = [
     'Burn',
     'Burn',
     'Glow',
-    'Standby'
+    'Standby',
 ]
 
 RESPONSE_OK = 'OK'
@@ -253,7 +253,7 @@ class Stove():
             DATA_STOVE_TEMPERATURE: data[DATA_STOVE_TEMPERATURE],
             DATA_TIME_SINCE_REMOTE_MSG: data[DATA_TIME_SINCE_REMOTE_MSG],
             DATA_DATE_TIME: stove_datetime,
-            DATA_TIME_TO_NEW_FIRE_WOOD: time_to_refuel,
+            DATA_TIME_TO_NEW_FIREWOOD: time_to_refuel,
             DATA_UPDATING: data[DATA_UPDATING],
             DATA_VALVE1_POSITION: data[DATA_VALVE1_POSITION],
             DATA_VALVE2_POSITION: data[DATA_VALVE2_POSITION],
