@@ -2,10 +2,8 @@ import os
 import sys
 from setuptools import setup
 
-from version import __version__
-
-
 sys.path[0:0] = ['pystove']
+from version import __version__
 
 
 def read(fname):
@@ -22,7 +20,7 @@ setup(
     keywords="stove hwam smartcontrol",
     url="https://github.com/mvn23/pystove",
     packages=['pystove'],
-    long_description=read('README'),
+    long_description=read('README.md'),
     install_requires=[
         'aiohttp',
     ],
