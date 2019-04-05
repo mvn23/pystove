@@ -268,7 +268,7 @@ class Stove():
         bin_arr = bytearray(await self._get('http://' + self.stove_host
                                             + STOVE_LIVE_DATA_URL), 'utf-8')
         if len(bin_arr) != 120:
-            _LOGGER.error("Got unexpected response from stove.")
+            _LOGGER.error("get_live_data got unexpected response from stove.")
             return
         data_out = {
             DATA_STOVE_TEMPERATURE: [],
@@ -285,13 +285,8 @@ class Stove():
 
     async def get_raw_data(self):
         """Request an update from the stove, return raw result."""
-        json_str = await self._get('http://' + self.stove_host
-                                   + STOVE_DATA_URL)
-        if json_str is None:
-            _LOGGER.error("Got empty or no response from stove.")
-            return
-        data = json.loads(json_str)
-        return data
+        return await self._get_json('http://' + self.stove_host
+                                    + STOVE_DATA_URL)
 
     def self_test(self, delay=3, processed=True):
         """Return self test async generator."""
@@ -320,11 +315,8 @@ class Stove():
             cur_state = not state
         url = (STOVE_NIGHT_LOWERING_OFF_URL if cur_state
                else STOVE_NIGHT_LOWERING_ON_URL)
-        json_str = await self._get('http://' + self.stove_host + url)
-        if json_str is None:
-            _LOGGER.error("Got empty or no response from stove.")
-            return False
-        return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
+        result = await self._get_json('http://' + self.stove_host + url)
+        return result.get(DATA_RESPONSE) == RESPONSE_OK
 
     async def set_night_lowering_hours(self, start=None, end=None):
         """Set night lowering start and end time."""
@@ -379,24 +371,17 @@ class Stove():
 
     async def start(self):
         """Start the ignition phase."""
-        json_str = await self._get('http://' + self.stove_host
-                                   + STOVE_START_URL)
-        if json_str is None:
-            _LOGGER.error("Got empty or no response from stove.")
-            return False
-        return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
+        result = await self._get_json('http://' + self.stove_host
+                                      + STOVE_START_URL)
+        return result.get(DATA_RESPONSE) == RESPONSE_OK
 
     async def _identify(self):
         """Get identification and set the properties on the object."""
 
         async def get_name_and_ip():
             """Get stove name and IP."""
-            json_str = await self._get('http://' + self.stove_host
-                                       + STOVE_ID_URL)
-            if json_str is None:
-                _LOGGER.error("Got empty or no response from stove.")
-                return
-            stove_id = json.loads(json_str)
+            stove_id = await self._get_json('http://' + self.stove_host
+                                            + STOVE_ID_URL)
             if None in [stove_id.get(DATA_NAME), stove_id.get(DATA_IP)]:
                 _LOGGER.warning("Unable to read stove name and/or IP.")
                 return
@@ -405,12 +390,9 @@ class Stove():
 
         async def get_ssid():
             """Get stove SSID."""
-            json_str = await self._get('http://' + self.stove_host
-                                       + STOVE_ACCESSPOINT_URL)
-            if json_str is None:
-                _LOGGER.error("Got empty or no response from stove.")
-                return
-            stove_ssid = json.loads(json_str).get(DATA_SSID)
+            result = await self._get_json('http://' + self.stove_host
+                                          + STOVE_ACCESSPOINT_URL)
+            stove_ssid = result.get(DATA_SSID)
             if stove_ssid is None:
                 _LOGGER.warning("Unable to read stove SSID.")
                 return
@@ -454,12 +436,10 @@ class Stove():
         result = None
         while True:
             # Error prone, retry up to 3 times
-            json_str = await self._get('http://' + self.stove_host
-                                       + STOVE_SELFTEST_RESULT_URL)
-            if json_str is None:
-                _LOGGER.error("Got empty or no response from stove.")
+            result = await self._get_json('http://' + self.stove_host
+                                          + STOVE_SELFTEST_RESULT_URL)
+            if result == {}:
                 continue
-            result = json.loads(json_str)
             if not result.get('reponse'):  # NOT A TYPO!!!
                 break
             if count >= 3:
@@ -470,12 +450,9 @@ class Stove():
 
     async def _self_test_start(self):
         """Request self test start."""
-        json_str = await self._get('http://' + self.stove_host
-                                   + STOVE_SELFTEST_START_URL)
-        if json_str is None:
-            _LOGGER.error("Got empty or no response from stove.")
-            return False
-        return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
+        result = await self._get_json('http://' + self.stove_host
+                                      + STOVE_SELFTEST_START_URL)
+        return result.get(DATA_RESPONSE) == RESPONSE_OK
 
     def _get_maintenance_alarms_text(self, bitmask):
         """Process maintenance alarms bitmask, return a list of strings."""
@@ -494,6 +471,21 @@ class Stove():
             if 1 << i & bitmask:
                 ret.append(SAFETY_ALARMS[i])
         return ret
+
+    async def _get_json(self, url):
+        """Get data from url, interpret as json, return result."""
+        json_str = await self._get(url)
+        if json_str is None:
+            _LOGGER.error("Got empty or no response from stove.")
+            return {}
+        try:
+            result = json.loads(json_str)
+        except json.JSONDecodeError as exc:
+            _LOGGER.error(
+                "Could not decode received data as json: %s", exc.doc)
+            _LOGGER.error("Error was: %s", exc.msg)
+            return {}
+        return result
 
     async def _get(self, url):
         """Get data from url, return response."""
