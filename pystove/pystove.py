@@ -43,6 +43,7 @@ DATA_IP = 'ip'
 DATA_LEVEL = 'level'
 DATA_MAINTENANCE_ALARMS = 'maintenance_alarms'
 DATA_MESSAGE_ID = 'message_id'
+DATA_MDNS = 'mdns'
 DATA_MODE = 'mode'
 DATA_NAME = 'name'
 DATA_NEW_FIREWOOD_ESTIMATE = 'new_fire_wood_estimate'
@@ -195,6 +196,7 @@ class Stove():
         self.name = UNKNOWN
         self.series = UNKNOWN
         self.stove_ip = UNKNOWN
+        self.stove_mdns = UNKNOWN
         self.stove_ssid = UNKNOWN
         self._session = aiohttp.ClientSession(headers=HTTP_HEADERS)
         if not skip_ident:
@@ -382,11 +384,13 @@ class Stove():
             """Get stove name and IP."""
             stove_id = await self._get_json('http://' + self.stove_host
                                             + STOVE_ID_URL)
-            if None in [stove_id.get(DATA_NAME), stove_id.get(DATA_IP)]:
-                _LOGGER.warning("Unable to read stove name and/or IP.")
+            if None in [stove_id.get(DATA_NAME), stove_id.get(DATA_IP), stove_id[DATA_MDNS]]:
+                _LOGGER.warning("Unable to read stove name, IP and/or MDNS.")
                 return
-            self.name = stove_id[DATA_NAME]
+            
+            self.name = stove_id[DATA_NAME]            
             self.stove_ip = stove_id[DATA_IP]
+            self.stove_mdns = stove_id[DATA_MDNS]
 
         async def get_ssid():
             """Get stove SSID."""

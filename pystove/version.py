@@ -14,4 +14,4 @@
 # along with pystove.  If not, see <http://www.gnu.org/licenses/>.
 #
 # Copyright 2019 Milan van Nugteren
-__version__ = '0.2a1'
+__version__ = '0.3a1'
