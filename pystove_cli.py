@@ -192,6 +192,7 @@ async def run_command(stove_host, command, value, loop):
             print("Model:\t\t{} Series".format(stv.series))
             print("Host:\t\t{}".format(stv.stove_host))
             print("IP:\t\t{}".format(stv.stove_ip))
+            print("MDNS:\t\t{}".format(stv.stove_mdns))
             print("SSID:\t\t{}".format(stv.stove_ssid))
             print("Algo Version:\t{}".format(stv.algo_version))
             print()

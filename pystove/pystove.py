@@ -43,6 +43,7 @@ DATA_IP = 'ip'
 DATA_LEVEL = 'level'
 DATA_MAINTENANCE_ALARMS = 'maintenance_alarms'
 DATA_MESSAGE_ID = 'message_id'
+DATA_MDNS = 'mdns'
 DATA_MODE = 'mode'
 DATA_NAME = 'name'
 DATA_NEW_FIREWOOD_ESTIMATE = 'new_fire_wood_estimate'
@@ -195,6 +196,7 @@ class Stove():
         self.name = UNKNOWN
         self.series = UNKNOWN
         self.stove_ip = UNKNOWN
+        self.stove_mdns = UNKNOWN
         self.stove_ssid = UNKNOWN
         self._session = aiohttp.ClientSession(headers=HTTP_HEADERS)
         if not skip_ident:
@@ -378,15 +380,28 @@ class Stove():
     async def _identify(self):
         """Get identification and set the properties on the object."""
 
-        async def get_name_and_ip():
-            """Get stove name and IP."""
+        async def get_identification():
+            """Get stove name, IP and MDNS"""
             stove_id = await self._get_json('http://' + self.stove_host
                                             + STOVE_ID_URL)
-            if None in [stove_id.get(DATA_NAME), stove_id.get(DATA_IP)]:
-                _LOGGER.warning("Unable to read stove name and/or IP.")
+            if not stove_id:
+                _LOGGER.error("Unable to read stove identity informations.")
                 return
-            self.name = stove_id[DATA_NAME]
-            self.stove_ip = stove_id[DATA_IP]
+            
+            if DATA_NAME in stove_id:
+                self.name = stove_id[DATA_NAME]            
+            else:
+                _LOGGER.warning("Unable to read stove name.")
+            
+            if DATA_IP in stove_id:
+                self.stove_ip = stove_id[DATA_IP]
+            else:
+                _LOGGER.warning("Unable to read stove IP.")
+
+            if DATA_MDNS in stove_id:
+                self.stove_mdns = stove_id[DATA_MDNS]
+            else:
+                _LOGGER.warning("Unable to read stove MDNS.")
 
         async def get_ssid():
             """Get stove SSID."""
@@ -425,7 +440,7 @@ class Stove():
                 _LOGGER.warning("Unable to open stove version info file.")
 
         await asyncio.gather(*[
-            get_name_and_ip(),
+            get_identification(),
             get_ssid(),
             get_version_info(),
         ])

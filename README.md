@@ -53,6 +53,8 @@ The series/model of the stove.
 The hostname used during creation of the Stove object.
 #### Stove.stove_ip
 The IP address as reported by the stove.
+#### Stove.stove_mdns
+The MAC address prefixed with "ihs_" as reported by the stove.
 #### Stove.stove_ssid
 The SSID to which the stove is connected.
 
