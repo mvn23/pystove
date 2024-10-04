@@ -380,17 +380,28 @@ class Stove():
     async def _identify(self):
         """Get identification and set the properties on the object."""
 
-        async def get_name_and_ip():
-            """Get stove name and IP."""
+        async def get_identification():
+            """Get stove name, IP and MDNS"""
             stove_id = await self._get_json('http://' + self.stove_host
                                             + STOVE_ID_URL)
-            if None in [stove_id.get(DATA_NAME), stove_id.get(DATA_IP), stove_id[DATA_MDNS]]:
-                _LOGGER.warning("Unable to read stove name, IP and/or MDNS.")
+            if not stove_id:
+                _LOGGER.error("Unable to read stove identity informations.")
                 return
             
-            self.name = stove_id[DATA_NAME]            
-            self.stove_ip = stove_id[DATA_IP]
-            self.stove_mdns = stove_id[DATA_MDNS]
+            if DATA_NAME in stove_id:
+                self.name = stove_id[DATA_NAME]            
+            else:
+                _LOGGER.warning("Unable to read stove name.")
+            
+            if DATA_IP in stove_id:
+                self.stove_ip = stove_id[DATA_IP]
+            else:
+                _LOGGER.warning("Unable to read stove IP.")
+
+            if DATA_MDNS in stove_id:
+                self.stove_mdns = stove_id[DATA_MDNS]
+            else:
+                _LOGGER.warning("Unable to read stove MDNS.")
 
         async def get_ssid():
             """Get stove SSID."""
@@ -429,7 +440,7 @@ class Stove():
                 _LOGGER.warning("Unable to open stove version info file.")
 
         await asyncio.gather(*[
-            get_name_and_ip(),
+            get_identification(),
             get_ssid(),
             get_version_info(),
         ])
