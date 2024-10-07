@@ -21,6 +21,7 @@ setup(
     url="https://github.com/mvn23/pystove",
     packages=["pystove"],
     long_description=read("README.md"),
+    long_description_content_type="text/markdown",
     install_requires=[
         "aiohttp",
     ],
