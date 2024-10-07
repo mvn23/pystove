@@ -17,10 +17,10 @@
 #
 
 import asyncio
+from datetime import datetime, time, timedelta
 import json
 import logging
 import xml.etree.ElementTree as ET
-from datetime import datetime, time, timedelta
 
 import aiohttp
 
@@ -182,15 +182,14 @@ STOVE_START_URL = '/start'
 UNKNOWN = 'Unknown'
 
 
-class Stove():
+class Stove:
     """Abstraction of a Stove object."""
 
     @classmethod
-    async def create(cls, stove_host, loop=asyncio.get_event_loop(),
-                     skip_ident=False):
+    async def create(cls, stove_host, loop=None, skip_ident=False):
         """Async create the Stove object."""
         self = cls()
-        self._loop = loop
+        self._loop = loop or asyncio.get_event_loop()
         self.stove_host = stove_host
         self.algo_version = UNKNOWN
         self.name = UNKNOWN
@@ -227,12 +226,16 @@ class Stove():
                                minute=data[DATA_NIGHT_BEGIN_MINUTE])
         nighttime_end = time(hour=data[DATA_NIGHT_END_HOUR],
                              minute=data[DATA_NIGHT_END_MINUTE])
-        stove_version = "{}.{}.{}".format(data[DATA_FIRMWARE_VERSION_MAJOR],
-                                          data[DATA_FIRMWARE_VERSION_MINOR],
-                                          data[DATA_FIRMWARE_VERSION_BUILD])
-        remote_version = "{}.{}.{}".format(data[DATA_REMOTE_VERSION_MAJOR],
-                                           data[DATA_REMOTE_VERSION_MINOR],
-                                           data[DATA_REMOTE_VERSION_BUILD])
+        stove_version = (
+            f"{data[DATA_FIRMWARE_VERSION_MAJOR]}"
+            f".{data[DATA_FIRMWARE_VERSION_MINOR]}"
+            f".{data[DATA_FIRMWARE_VERSION_BUILD]}"
+        )
+        remote_version = (
+            f"{data[DATA_REMOTE_VERSION_MAJOR]}"
+            f".{data[DATA_REMOTE_VERSION_MINOR]}"
+            f".{data[DATA_REMOTE_VERSION_BUILD]}"
+        )
         for item in (DATA_STOVE_TEMPERATURE, DATA_ROOM_TEMPERATURE,
                      DATA_OXYGEN_LEVEL):
             data[item] = int(data[item]/100)
@@ -354,8 +357,10 @@ class Stove():
             return False
         return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
 
-    async def set_time(self, new_time=datetime.now()):
+    async def set_time(self, new_time=None):
         """Set the time and date of the stove."""
+        if new_time is None:
+            new_time = datetime.now()
         data = {
             'year': new_time.year,
             'month': new_time.month - 1,  # Stove month input is 0 based.
