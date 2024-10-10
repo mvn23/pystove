@@ -20,9 +20,9 @@ import asyncio
 from datetime import datetime, time, timedelta
 import json
 import logging
-import xml.etree.ElementTree as ET
 
 import aiohttp
+import defusedxml.ElementTree as ET
 
 _LOGGER = logging.getLogger(__name__)
 

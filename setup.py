@@ -24,6 +24,7 @@ setup(
     long_description_content_type="text/markdown",
     install_requires=[
         "aiohttp",
+        "defusedxml",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
