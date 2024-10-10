@@ -227,11 +227,12 @@ class Stove:
         safety_alarms = self._get_safety_alarms_text(data[DATA_SAFETY_ALARMS])
         operation_mode = OPERATION_MODES[data[DATA_OPERATION_MODE]]
         night_lowering = NIGHT_LOWERING_STATES[data[DATA_NIGHT_LOWERING]]
+        # Stove uses 24:00 for end of day
         nighttime_start = time(
-            hour=data[DATA_NIGHT_BEGIN_HOUR], minute=data[DATA_NIGHT_BEGIN_MINUTE]
+            hour=data[DATA_NIGHT_BEGIN_HOUR] % 24, minute=data[DATA_NIGHT_BEGIN_MINUTE]
         )
         nighttime_end = time(
-            hour=data[DATA_NIGHT_END_HOUR], minute=data[DATA_NIGHT_END_MINUTE]
+            hour=data[DATA_NIGHT_END_HOUR] % 24, minute=data[DATA_NIGHT_END_MINUTE]
         )
         stove_version = (
             f"{data[DATA_FIRMWARE_VERSION_MAJOR]}"
