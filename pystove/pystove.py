@@ -280,14 +280,15 @@ class Stove:
         bin_arr = bytearray(
             await self._get("http://" + self.stove_host + STOVE_LIVE_DATA_URL), "utf-8"
         )
-        if len(bin_arr) != 120:
+        response_length = len(bin_arr)
+        if response_length % 8 != 0:
             _LOGGER.error("get_live_data got unexpected response from stove.")
             return
         data_out = {
             DATA_STOVE_TEMPERATURE: [],
             DATA_OXYGEN_LEVEL: [],
         }
-        for i in range(120):
+        for i in range(int(response_length / 8)):
             data_out[DATA_STOVE_TEMPERATURE].append(
                 (
                     bin_arr[i * 4] << 4
