@@ -42,7 +42,7 @@ from pystove.pystove import (
 from pystove.version import __version__
 
 
-async def run_command(stove_host, command, value, loop):
+async def run_command(stove_host, command, value):
     """Run the app with the specified command."""
 
     async def execute(command, value):
@@ -219,7 +219,9 @@ async def run_command(stove_host, command, value, loop):
             else:
                 print("Stove failed to start.")
 
-    stv = await Stove.create(stove_host, loop, skip_ident=command != "show_info")
+    stv = await Stove.create(
+        stove_host, asyncio.get_event_loop(), skip_ident=command != "show_info"
+    )
     await execute(command, value)
     await stv.destroy()
 
@@ -312,5 +314,4 @@ if __name__ == "__main__":
             value = arg
     if stove_host is None:
         print_help()
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(run_command(stove_host, command, value, loop))
+    asyncio.run(run_command(stove_host, command, value))
