@@ -22,6 +22,7 @@ setup(
     packages=["pystove"],
     long_description=read("README.md"),
     long_description_content_type="text/markdown",
+    python_requires=">=3.9",
     install_requires=[
         "aiohttp",
         "defusedxml",
@@ -30,5 +31,11 @@ setup(
         "Development Status :: 3 - Alpha",
         "Topic :: Software Development :: Libraries",
         "License :: OSI Approved :: GNU General Public License v3 or later " "(GPLv3+)",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
     ],
 )

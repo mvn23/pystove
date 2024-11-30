@@ -15,3 +15,8 @@ known-first-party = [
 ]
 combine-as-imports = true
 split-on-trailing-comma = false
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "."
+]
