@@ -277,7 +277,7 @@ if __name__ == "__main__":
         print()
         print("  set_night_lowering_hours")
         print("    Set the night lowering hours on the stove.")
-        print("    This command requires a <value> in the form of" " <start>-<end>")
+        print("    This command requires a <value> in the form of <start>-<end>")
         print("    Both <start> and <end> must be in 24h format H[:MM]")
         print()
         print("  set_remote_refill_alarm")
@@ -286,9 +286,7 @@ if __name__ == "__main__":
         print("    A call without value toggles the setting.")
         print()
         print("  set_time")
-        print(
-            "    Set the time on the stove. Defaults to current" " time on this system."
-        )
+        print("    Set the time on the stove. Defaults to current time on this system.")
         print("    Optional value format: YYYY-MM-DD HH:MM:SS")
         print()
         print("  show_info")
