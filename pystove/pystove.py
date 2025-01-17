@@ -163,6 +163,7 @@ SELF_TEST_VALUES = [
 
 STOVE_ACCESSPOINT_URL = "/esp/get_current_accesspoint"
 STOVE_BURN_LEVEL_URL = "/set_burn_level"
+STOVE_CLOSE_FILE_URL = "/close_file"
 STOVE_DATA_URL = "/get_stove_data"
 STOVE_ID_URL = "/esp/get_identification"
 STOVE_LIVE_DATA_URL = "/get_live_data"
@@ -457,6 +458,7 @@ class Stove:
                 xml_str = await self._post(
                     "http://" + self.stove_host + STOVE_READ_OPEN_FILE_URL, data
                 )
+                await self._get("http://" + self.stove_host + STOVE_CLOSE_FILE_URL)
                 try:
                     xml_root = ET.fromstring(xml_str)
                     self.algo_version = xml_root.find("Name").text
