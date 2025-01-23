@@ -266,7 +266,7 @@ class Stove:
             f".{data[DATA_REMOTE_VERSION_BUILD]}"
         )
         for item in (DATA_STOVE_TEMPERATURE, DATA_ROOM_TEMPERATURE, DATA_OXYGEN_LEVEL):
-            data[item] = int(data[item] / 100)
+            data[item] = float(data[item] / 100)
         processed_data = {
             DATA_ALGORITHM: data[DATA_ALGORITHM],
             DATA_BURN_LEVEL: data[DATA_BURN_LEVEL],
