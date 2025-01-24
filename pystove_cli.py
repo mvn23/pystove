@@ -37,6 +37,7 @@ from pystove.const import (
     DATA_TEST_VALVE1,
     DATA_TEST_VALVE2,
     DATA_TEST_VALVE3,
+    SelfTestState,
 )
 from pystove.pystove import Stove
 from pystove.version import __version__
@@ -96,12 +97,12 @@ async def run_command(stove_host, command, value):
                     print("\nHTTP response timed out.")
                     return
                 sys.stdout.write(
-                    f"Config: {res[DATA_TEST_CONFIGURATION]:13}"
-                    f" | Temp: {res[DATA_TEST_TEMP_SENSOR]:13}"
-                    f" | O2: {res[DATA_TEST_O2_SENSOR]:13}"
-                    f" | Valve1: {res[DATA_TEST_VALVE1]:13}"
-                    f" | Valve2: {res[DATA_TEST_VALVE2]:13}"
-                    f" | Valve3: {res[DATA_TEST_VALVE3]:13}"
+                    f"Config: {SelfTestState(res[DATA_TEST_CONFIGURATION]).name:13}"
+                    f" | Temp: {SelfTestState(res[DATA_TEST_TEMP_SENSOR]).name:13}"
+                    f" | O2: {SelfTestState(res[DATA_TEST_O2_SENSOR]).name:13}"
+                    f" | Valve1: {SelfTestState(res[DATA_TEST_VALVE1]).name:13}"
+                    f" | Valve2: {SelfTestState(res[DATA_TEST_VALVE2]).name:13}"
+                    f" | Valve3: {SelfTestState(res[DATA_TEST_VALVE3]).name:13}"
                     f"\r"
                 )
             print()

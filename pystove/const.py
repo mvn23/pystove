@@ -66,14 +66,6 @@ DATA_VALVE1_POSITION = "valve1_position"
 DATA_VALVE2_POSITION = "valve2_position"
 DATA_VALVE3_POSITION = "valve3_position"
 
-SELF_TEST_VALUES = [
-    "Failed",
-    "Passed",
-    "Running",
-    "Not Completed",
-    "Not Started",
-]
-
 
 class BurnPhase(IntEnum):
     IGNITION = 0
@@ -145,3 +137,13 @@ class SafetyAlarm(IntFlag):
     DOOR_OPEN_TOO_LONG = 64
     MANUAL_SAFETY_ALARM = 128
     STOVE_SENSOR_FAULT = 256
+
+
+class SelfTestState(IntEnum):
+    """Self test states."""
+
+    FAILED = 0
+    PASSED = 1
+    RUNNING = 2
+    NOT_COMPLETED = 3
+    NOT_STARTED = 4

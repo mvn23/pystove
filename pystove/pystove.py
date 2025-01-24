@@ -477,7 +477,7 @@ class _SelfTest:
                     return in_dict
                 out_dict = {}
                 for k, v in in_dict.items():
-                    out_dict[k] = c.SELF_TEST_VALUES[v]
+                    out_dict[k] = c.SelfTestState(v)
                 return out_dict
 
             intermediate_raw = await self.stove._self_test_result()
@@ -485,7 +485,7 @@ class _SelfTest:
                 return None
             else:
                 intermediate = process_dict(intermediate_raw)
-                if 2 not in intermediate_raw.values():
+                if c.SelfTestState.RUNNING not in intermediate.values():
                     self.test_finished = True
                 return intermediate
 
