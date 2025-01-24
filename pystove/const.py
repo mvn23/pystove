@@ -16,6 +16,8 @@
 # Copyright 2019 Milan van Nugteren
 #
 
+from enum import IntFlag
+
 DATA_ALGORITHM = "algorithm"
 DATA_BEGIN_HOUR = "begin_hour"
 DATA_BEGIN_MINUTE = "begin_minute"
@@ -63,16 +65,6 @@ DATA_UPDATING = "updating"
 DATA_VALVE1_POSITION = "valve1_position"
 DATA_VALVE2_POSITION = "valve2_position"
 DATA_VALVE3_POSITION = "valve3_position"
-
-MAINTENANCE_ALARMS = [
-    "Stove Backup Battery Low",
-    "O2 Sensor Fault",
-    "O2 Sensor Offset",
-    "Stove Temperature Sensor Fault",
-    "Room Temperature Sensor Fault",
-    "Communication Fault",
-    "Room Temperature Sensor Battery Low",
-]
 
 NIGHT_LOWERING_STATES = [
     "Disabled",
@@ -137,3 +129,15 @@ class FileOpenFailedError(Exception):
 
 class FileWriteFailedError(Exception):
     """File Write request unsuccessful."""
+
+
+class MaintenanceAlarm(IntFlag):
+    """Maintenance alarms."""
+
+    BACKUP_BATTERY_LOW = 1
+    O2_SENSOR_FAULT = 2
+    O2_SENSOR_OFFSET = 4
+    STOVE_TEMP_SENSOR_FAULT = 8
+    ROOM_TEMP_SENSOR_FAULT = 16
+    COMM_FAULT = 32
+    ROOM_TEMP_SENSOR_BATTERY_LOW = 64

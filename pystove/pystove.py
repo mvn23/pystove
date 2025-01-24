@@ -129,9 +129,6 @@ class Stove:
             minutes=data[c.DATA_NEW_FIREWOOD_MINUTES],
         )
         refuel_estimate = stove_datetime + time_to_refuel
-        maintenance_alarms = self._get_maintenance_alarms_text(
-            data[c.DATA_MAINTENANCE_ALARMS]
-        )
         safety_alarms = self._get_safety_alarms_text(data[c.DATA_SAFETY_ALARMS])
         operation_mode = c.OPERATION_MODES[data[c.DATA_OPERATION_MODE]]
         night_lowering = c.NIGHT_LOWERING_STATES[data[c.DATA_NIGHT_LOWERING]]
@@ -162,7 +159,9 @@ class Stove:
         processed_data = {
             c.DATA_ALGORITHM: data[c.DATA_ALGORITHM],
             c.DATA_BURN_LEVEL: data[c.DATA_BURN_LEVEL],
-            c.DATA_MAINTENANCE_ALARMS: maintenance_alarms,
+            c.DATA_MAINTENANCE_ALARMS: c.MaintenanceAlarm(
+                data[c.DATA_MAINTENANCE_ALARMS]
+            ),
             c.DATA_MESSAGE_ID: data[c.DATA_MESSAGE_ID],
             c.DATA_NEW_FIREWOOD_ESTIMATE: refuel_estimate,
             c.DATA_NIGHT_BEGIN_TIME: nighttime_start,
@@ -420,15 +419,6 @@ class Stove:
             "http://" + self.stove_host + STOVE_SELFTEST_START_URL
         )
         return result.get(KEY_RESPONSE) == RESPONSE_OK
-
-    def _get_maintenance_alarms_text(self, bitmask):
-        """Process maintenance alarms bitmask, return a list of strings."""
-        num_alarms = len(c.MAINTENANCE_ALARMS)
-        ret = []
-        for i in range(num_alarms):
-            if 1 << i & bitmask:
-                ret.append(c.MAINTENANCE_ALARMS[i])
-        return ret
 
     def _get_safety_alarms_text(self, bitmask):
         """Process safety alarms bitmask, return a list of strings."""
