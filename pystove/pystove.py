@@ -184,8 +184,6 @@ STOVE_SELFTEST_START_URL = "/start_selftest"
 STOVE_START_URL = "/start"
 STOVE_WRITE_OPEN_FILE_URL = "/write_open_file"
 
-UNKNOWN = "Unknown"
-
 
 class FileOpenFailedError(Exception):
     """File Open request unsuccessful."""
@@ -210,12 +208,12 @@ class Stove:
         """Async create the Stove object."""
         self = cls()
         self.stove_host = stove_host
-        self.algo_version = UNKNOWN
-        self.name = UNKNOWN
-        self.series = UNKNOWN
-        self.stove_ip = UNKNOWN
-        self.stove_mdns = UNKNOWN
-        self.stove_ssid = UNKNOWN
+        self.algo_version = None
+        self.name = None
+        self.series = None
+        self.stove_ip = None
+        self.stove_mdns = None
+        self.stove_ssid = None
         self._session = aiohttp.ClientSession(headers=HTTP_HEADERS)
         if not skip_ident:
             await self._identify()
