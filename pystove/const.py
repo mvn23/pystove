@@ -16,7 +16,7 @@
 # Copyright 2019 Milan van Nugteren
 #
 
-from enum import IntFlag
+from enum import IntEnum, IntFlag
 
 DATA_ALGORITHM = "algorithm"
 DATA_BEGIN_HOUR = "begin_hour"
@@ -65,14 +65,6 @@ DATA_UPDATING = "updating"
 DATA_VALVE1_POSITION = "valve1_position"
 DATA_VALVE2_POSITION = "valve2_position"
 DATA_VALVE3_POSITION = "valve3_position"
-
-NIGHT_LOWERING_STATES = [
-    "Disabled",
-    "Init",
-    "Day",
-    "Night",
-    "Manual Night",
-]
 
 OPERATION_MODES = [
     "Init",
@@ -141,3 +133,13 @@ class MaintenanceAlarm(IntFlag):
     ROOM_TEMP_SENSOR_FAULT = 16
     COMM_FAULT = 32
     ROOM_TEMP_SENSOR_BATTERY_LOW = 64
+
+
+class NightLoweringState(IntEnum):
+    """Night lowering states."""
+
+    DISABLED = 0
+    INIT = 1
+    DAY = 2
+    NIGHT = 3
+    MANUAL_NIGHT = 4
