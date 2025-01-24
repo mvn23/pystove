@@ -130,7 +130,7 @@ class Stove:
         )
         refuel_estimate = stove_datetime + time_to_refuel
         safety_alarms = self._get_safety_alarms_text(data[c.DATA_SAFETY_ALARMS])
-        operation_mode = c.OPERATION_MODES[data[c.DATA_OPERATION_MODE]]
+        operation_mode = c.OperationMode(data[c.DATA_OPERATION_MODE])
         night_lowering = c.NightLoweringState(data[c.DATA_NIGHT_LOWERING])
         # Stove uses 24:00 for end of day
         nighttime_start = time(

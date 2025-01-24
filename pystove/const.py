@@ -66,20 +66,6 @@ DATA_VALVE1_POSITION = "valve1_position"
 DATA_VALVE2_POSITION = "valve2_position"
 DATA_VALVE3_POSITION = "valve3_position"
 
-OPERATION_MODES = [
-    "Init",
-    "Self Test",
-    "Normal",
-    "Temperature Fault",
-    "O2 Fault",
-    "Calibration",
-    "Safety",
-    "Manual",
-    "MotorTest",
-    "Slow Combustion",
-    "Low Voltage",
-]
-
 PHASE = [
     "Ignition",
     "Burn",
@@ -143,3 +129,19 @@ class NightLoweringState(IntEnum):
     DAY = 2
     NIGHT = 3
     MANUAL_NIGHT = 4
+
+
+class OperationMode(IntEnum):
+    """Stove operation modes."""
+
+    INIT = 0
+    SELF_TEST = 1
+    NORMAL = 2
+    TEMPERATURE_FAULT = 3
+    O2_FAULT = 4
+    CALIBRATION = 5
+    SAFETY = 6
+    MANUAL = 7
+    MOTOR_TEST = 8
+    SLOW_COMBUSTION = 9
+    LOW_VOLTAGE = 10
