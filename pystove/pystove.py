@@ -206,10 +206,9 @@ class Stove:
     """Abstraction of a Stove object."""
 
     @classmethod
-    async def create(cls, stove_host, loop=None, skip_ident=False):
+    async def create(cls, stove_host, skip_ident=False):
         """Async create the Stove object."""
         self = cls()
-        self._loop = loop or asyncio.get_event_loop()
         self.stove_host = stove_host
         self.algo_version = UNKNOWN
         self.name = UNKNOWN
