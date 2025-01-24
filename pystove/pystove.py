@@ -298,12 +298,12 @@ class Stove:
         if new_time is None:
             new_time = datetime.now()
         data = {
-            "year": new_time.year,
-            "month": new_time.month - 1,  # Stove month input is 0 based.
-            "day": new_time.day,
-            "hours": new_time.hour,
-            "minutes": new_time.minute,
-            "seconds": new_time.second,
+            YEAR: new_time.year,
+            MONTH: new_time.month - 1,  # Stove month input is 0 based.
+            DAY: new_time.day,
+            HOURS: new_time.hour,
+            MINUTES: new_time.minute,
+            SECONDS: new_time.second,
         }
         json_str = await self._post(
             "http://" + self.stove_host + STOVE_SET_TIME_URL, data
