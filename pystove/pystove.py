@@ -485,7 +485,8 @@ class Stove:
 
         async def get_version_info():
             """Get stove version info."""
-            async with self._open_file("info.xml", OpenFileMode.READ) as xml_str:
+            async with _StoveFile(self, "info.xml") as f:
+                xml_str = await f.read()
                 try:
                     xml_root = ET.fromstring(xml_str)
                     self.algo_version = xml_root.find("Name").text
