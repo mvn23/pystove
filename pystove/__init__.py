@@ -18,8 +18,8 @@
 
 # flake8: noqa
 
-from . import const
-
 from .pystove import Stove
 
 from .version import __version__
+
+__all__ = ["Stove"]
