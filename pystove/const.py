@@ -66,15 +66,6 @@ DATA_VALVE1_POSITION = "valve1_position"
 DATA_VALVE2_POSITION = "valve2_position"
 DATA_VALVE3_POSITION = "valve3_position"
 
-PHASE = [
-    "Ignition",
-    "Burn",
-    "Burn",
-    "Burn",
-    "Glow",
-    "Standby",
-]
-
 SAFETY_ALARMS = [
     "Valve Fault",
     "Valve Fault",
@@ -99,6 +90,13 @@ SELF_TEST_VALUES = [
     "Not Completed",
     "Not Started",
 ]
+
+
+class BurnPhase(IntEnum):
+    IGNITION = 0
+    BURN = 1
+    GLOW = 4
+    STANDBY = 5
 
 
 class FileOpenFailedError(Exception):

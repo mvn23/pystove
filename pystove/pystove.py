@@ -115,7 +115,9 @@ class Stove:
         data = await self.get_raw_data()
         if data is None:
             return
-        phase = c.PHASE[data[c.DATA_PHASE]]
+        phase = c.BurnPhase(
+            data[c.DATA_PHASE] if data[c.DATA_PHASE] not in (2, 3) else 1
+        )
         stove_datetime = datetime(
             data[YEAR],
             data[MONTH],
