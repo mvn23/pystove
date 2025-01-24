@@ -225,9 +225,7 @@ async def run_command(stove_host, command, value):
             else:
                 print("Stove failed to start.")
 
-    stv = await Stove.create(
-        stove_host, asyncio.get_event_loop(), skip_ident=command != "show_info"
-    )
+    stv = await Stove.create(stove_host, skip_ident=command != "show_info")
     await execute(command, value)
     await stv.destroy()
 
