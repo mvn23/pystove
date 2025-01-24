@@ -131,7 +131,6 @@ class Stove:
             minutes=data[c.DATA_NEW_FIREWOOD_MINUTES],
         )
         refuel_estimate = stove_datetime + time_to_refuel
-        safety_alarms = self._get_safety_alarms_text(data[c.DATA_SAFETY_ALARMS])
         operation_mode = c.OperationMode(data[c.DATA_OPERATION_MODE])
         night_lowering = c.NightLoweringState(data[c.DATA_NIGHT_LOWERING])
         # Stove uses 24:00 for end of day
@@ -176,7 +175,7 @@ class Stove:
             c.DATA_REMOTE_REFILL_ALARM: data[c.DATA_REMOTE_REFILL_ALARM],
             c.DATA_REMOTE_VERSION: remote_version,
             c.DATA_ROOM_TEMPERATURE: data[c.DATA_ROOM_TEMPERATURE],
-            c.DATA_SAFETY_ALARMS: safety_alarms,
+            c.DATA_SAFETY_ALARMS: c.SafetyAlarm(data[c.DATA_SAFETY_ALARMS]),
             c.DATA_STOVE_TEMPERATURE: data[c.DATA_STOVE_TEMPERATURE],
             c.DATA_TIME_SINCE_REMOTE_MSG: data[c.DATA_TIME_SINCE_REMOTE_MSG],
             c.DATA_DATE_TIME: stove_datetime,
@@ -421,15 +420,6 @@ class Stove:
             "http://" + self.stove_host + STOVE_SELFTEST_START_URL
         )
         return result.get(KEY_RESPONSE) == RESPONSE_OK
-
-    def _get_safety_alarms_text(self, bitmask):
-        """Process safety alarms bitmask, return a list of strings."""
-        num_alarms = len(c.SAFETY_ALARMS)
-        ret = []
-        for i in range(num_alarms):
-            if 1 << i & bitmask:
-                ret.append(c.SAFETY_ALARMS[i])
-        return ret
 
     async def _get_json(self, url):
         """Get data from url, interpret as json, return result."""

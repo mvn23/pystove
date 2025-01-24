@@ -66,23 +66,6 @@ DATA_VALVE1_POSITION = "valve1_position"
 DATA_VALVE2_POSITION = "valve2_position"
 DATA_VALVE3_POSITION = "valve3_position"
 
-SAFETY_ALARMS = [
-    "Valve Fault",
-    "Valve Fault",
-    "Valve Fault",
-    "Bad Configuration",
-    "Valve Disconnected",
-    "Valve Disconnected",
-    "Valve Disconnected",
-    "Valve Calibration Error",
-    "Valve Calibration Error",
-    "Valve Calibration Error",
-    "Chimney Overheat",
-    "Door Open Too Long",
-    "Manual Safety Alarm",
-    "Stove Sensor Fault",
-]
-
 SELF_TEST_VALUES = [
     "Failed",
     "Passed",
@@ -143,3 +126,22 @@ class OperationMode(IntEnum):
     MOTOR_TEST = 8
     SLOW_COMBUSTION = 9
     LOW_VOLTAGE = 10
+
+
+class SafetyAlarm(IntFlag):
+    """Stove Safety Alarms."""
+
+    VALVE_1_FAULT = 1
+    VALVE_2_FAULT = 2
+    VALVE_3_FAULT = 4
+    BAD_CONFIGURATION = 8
+    VALVE_1_DISCONNECTED = 16
+    VALVE_2_DISCONNECTED = 16
+    VALVE_3_DISCONNECTED = 16
+    VALVE_1_CALIBRATION_ERROR = 16
+    VALVE_2_CALIBRATION_ERROR = 16
+    VALVE_3_CALIBRATION_ERROR = 16
+    CHIMNEY_OVERHEAT = 32
+    DOOR_OPEN_TOO_LONG = 64
+    MANUAL_SAFETY_ALARM = 128
+    STOVE_SENSOR_FAULT = 256
