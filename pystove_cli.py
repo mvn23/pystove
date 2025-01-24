@@ -22,7 +22,7 @@ from datetime import datetime, time, timedelta
 import re
 import sys
 
-from pystove.pystove import (
+from pystove.const import (
     DATA_BURN_LEVEL,
     DATA_DATE_TIME,
     DATA_NIGHT_BEGIN_TIME,
@@ -37,8 +37,8 @@ from pystove.pystove import (
     DATA_TEST_VALVE1,
     DATA_TEST_VALVE2,
     DATA_TEST_VALVE3,
-    Stove,
 )
+from pystove.pystove import Stove
 from pystove.version import __version__
 
 
