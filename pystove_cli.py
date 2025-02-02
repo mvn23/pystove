@@ -212,7 +212,7 @@ async def run_command(stove_host, command, value):
             print(
                 "MAC:\t\t"
                 + ":".join(
-                    [f"{hex(stv.mac_address)}"[i : i + 2] for i in range(2, 14, 2)]
+                    [f"{stv.mac_address:012x}"[i : i + 2] for i in range(0, 12, 2)]
                 )
             )
             print(f"MDNS:\t\t{stv.stove_mdns}")
