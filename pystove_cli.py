@@ -209,6 +209,12 @@ async def run_command(stove_host, command, value):
             print(f"Model:\t\t{stv.series} Series")
             print(f"Host:\t\t{stv.stove_host}")
             print(f"IP:\t\t{stv.stove_ip}")
+            print(
+                "MAC:\t\t"
+                + ":".join(
+                    [f"{stv.mac_address:012x}"[i : i + 2] for i in range(0, 12, 2)]
+                )
+            )
             print(f"MDNS:\t\t{stv.stove_mdns}")
             print(f"SSID:\t\t{stv.stove_ssid}")
             print(f"Algo Version:\t{stv.algo_version}")

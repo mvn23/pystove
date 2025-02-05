@@ -427,6 +427,8 @@ class Stove:
 
             if DATA_MDNS in stove_id:
                 self.stove_mdns = stove_id[DATA_MDNS]
+                self.mac_address = int(self.stove_mdns[-12:], 16) & 0xFDFFFFFFFFFF
+
             else:
                 _LOGGER.warning("Unable to read stove MDNS.")
 
