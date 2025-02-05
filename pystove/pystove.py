@@ -18,10 +18,13 @@
 
 import asyncio
 from datetime import datetime, time, timedelta
+from enum import IntEnum
 import json
 import logging
+import struct
 
 import aiohttp
+from aiohttp.client_exceptions import ClientConnectorError
 import defusedxml.ElementTree as ET
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,6 +37,7 @@ DATA_END_HOUR = "end_hour"
 DATA_END_MINUTE = "end_minute"
 DATA_BURN_LEVEL = "burn_level"
 DATA_DATE_TIME = "date_time"
+DATA_FILE_SIZE = "file_size"
 DATA_FILENAME = "file_name"
 DATA_FIRMWARE_VERSION = "firmware_version"
 DATA_FIRMWARE_VERSION_BUILD = "version_build"
@@ -163,7 +167,9 @@ SELF_TEST_VALUES = [
 
 STOVE_ACCESSPOINT_URL = "/esp/get_current_accesspoint"
 STOVE_BURN_LEVEL_URL = "/set_burn_level"
+STOVE_CLOSE_FILE_URL = "/close_file"
 STOVE_DATA_URL = "/get_stove_data"
+STOVE_DELETE_FILE_URL = "/delete_file"
 STOVE_ID_URL = "/esp/get_identification"
 STOVE_LIVE_DATA_URL = "/get_live_data"
 STOVE_NIGHT_LOWERING_OFF_URL = "/set_night_lowering_off"
@@ -176,8 +182,24 @@ STOVE_SET_TIME_URL = "/set_time"
 STOVE_SELFTEST_RESULT_URL = "/get_selftest_result"
 STOVE_SELFTEST_START_URL = "/start_selftest"
 STOVE_START_URL = "/start"
+STOVE_WRITE_OPEN_FILE_URL = "/write_open_file"
 
 UNKNOWN = "Unknown"
+
+
+class FileOpenFailedError(Exception):
+    """File Open request unsuccessful."""
+
+
+class FileWriteFailedError(Exception):
+    """File Write request unsuccessful."""
+
+
+class OpenFileMode(IntEnum):
+    """Modes used to open files on the stove."""
+
+    WRITE = 0
+    READ = 1
 
 
 class Stove:
@@ -405,6 +427,24 @@ class Stove:
         result = await self._get_json("http://" + self.stove_host + STOVE_START_URL)
         return result.get(DATA_RESPONSE) == RESPONSE_OK
 
+    async def write_text_file(self, filename, text):
+        async with _StoveWritableFile(self, filename) as f:
+            await f.write_text(text)
+
+    async def write_binary_file(self, filename, data):
+        async with _StoveWritableFile(self, filename) as f:
+            await f.write_binary(data)
+
+    async def delete_file(self, filename):
+        json_str = await self._post(
+            "http://" + self.stove_host + STOVE_NIGHT_TIME_URL,
+            {DATA_FILENAME: filename},
+        )
+        if json_str is None:
+            _LOGGER.error("Got empty or no response from stove.")
+            return False
+        return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
+
     async def _identify(self):
         """Get identification and set the properties on the object."""
 
@@ -445,18 +485,8 @@ class Stove:
 
         async def get_version_info():
             """Get stove version info."""
-            data = {DATA_FILENAME: "info.xml", DATA_MODE: 1}
-            json_str = await self._post(
-                "http://" + self.stove_host + STOVE_OPEN_FILE_URL, data
-            )
-            if json_str is None:
-                _LOGGER.error("Got empty or no response from stove.")
-                return
-            success = json.loads(json_str)
-            if success[DATA_SUCCESS] == 1:
-                xml_str = await self._post(
-                    "http://" + self.stove_host + STOVE_READ_OPEN_FILE_URL, data
-                )
+            async with _StoveFile(self, "info.xml") as f:
+                xml_str = await f.read()
                 try:
                     xml_root = ET.fromstring(xml_str)
                     self.algo_version = xml_root.find("Name").text
@@ -465,8 +495,6 @@ class Stove:
                     _LOGGER.warning("Invalid XML. Could not get version info.")
                 except AttributeError:
                     _LOGGER.warning("Missing key in version info XML.")
-            else:
-                _LOGGER.warning("Unable to open stove version info file.")
 
         await asyncio.gather(
             *[
@@ -539,7 +567,7 @@ class Stove:
         try:
             async with self._session.get(url) as response:
                 return await response.text()
-        except aiohttp.client_exceptions.ClientConnectorError:
+        except ClientConnectorError:
             _LOGGER.error("Could not connect to stove.")
 
     async def _post(self, url, data):
@@ -549,7 +577,7 @@ class Stove:
                 url, data=json.dumps(data, separators=(",", ":"))
             ) as response:
                 return await response.text()
-        except aiohttp.client_exceptions.ClientConnectorError:
+        except ClientConnectorError:
             _LOGGER.error("Could not connect to stove.")
 
 
@@ -599,3 +627,81 @@ class _SelfTest:
 
         await asyncio.sleep(self.delay)
         return await get_result()
+
+
+class _StoveFile:
+    """Context manager for read-only files on the stove."""
+
+    def __init__(self, stove, path):
+        """Initialize the context manager."""
+        self.stove = stove
+        self.base_url = "http://" + stove.stove_host
+        self.data = {DATA_FILENAME: path, DATA_MODE: OpenFileMode.READ}
+        self.file_size = None
+
+    async def __aenter__(self):
+        """Open a file within a context."""
+        try:
+            json_str = await self.stove._post(
+                self.base_url + STOVE_OPEN_FILE_URL, self.data
+            )
+            if json_str is None:
+                raise ClientConnectorError
+            response_data = json.loads(json_str)
+            if response_data.get(DATA_SUCCESS) != 1:
+                raise FileOpenFailedError
+            self.file_size = response_data.get(DATA_FILE_SIZE)
+            return self
+        except (ClientConnectorError, FileOpenFailedError):
+            await self.stove._get(self.base_url + STOVE_CLOSE_FILE_URL)
+            raise
+
+    async def __aexit__(self, *args):
+        """Close the file."""
+        await self.stove._get(self.base_url + STOVE_CLOSE_FILE_URL)
+
+    async def read(self):
+        """Read the file."""
+        return await self.stove._post(self.base_url + STOVE_READ_OPEN_FILE_URL, {})
+
+
+class _StoveWritableFile(_StoveFile):
+    """Context manager for writable files on the stove."""
+
+    def __init__(self, stove, path):
+        """Initialize the context manager."""
+        super().__init__(stove, path)
+        self.data = {DATA_FILENAME: path, DATA_MODE: OpenFileMode.WRITE}
+
+    async def write_text(self, text, offset=0):
+        """Write text to the file."""
+        await self.write_binary(text.encode("utf-8", offset))
+
+    async def write_binary(self, data, offset=0):
+        """Write data to the file."""
+        # write_open_file expects binary data:
+        # uint16 Size of binary data;
+        # uint32 Offset to write to;
+        # uint8[1024] data
+        data_length = len(data)
+        if data_length > 1024:
+            raise RuntimeError("Data too long (>1024 bytes)")
+        size = 2 + 4 + data_length
+        byte_array = struct.pack(f"<HI{data_length}s", size, offset, data)
+
+        try:
+            reader, writer = await asyncio.open_connection(self.stove.stove_host, 80)
+            request_string = (
+                f"POST {STOVE_WRITE_OPEN_FILE_URL} HTTP/1.1 \r\n"
+                f"content-length: {data_length} \r\n"
+                "Content-Type: binary \r\n"
+                "\r\n"
+            )
+            writer.write(request_string.encode("utf-8"))
+            writer.write(byte_array)
+            await writer.drain()
+            response = await reader.read(2)
+            if response != b"OK":
+                raise FileWriteFailedError
+        finally:
+            writer.close()
