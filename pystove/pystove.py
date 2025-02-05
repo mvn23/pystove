@@ -27,143 +27,32 @@ import aiohttp
 from aiohttp.client_exceptions import ClientConnectorError
 import defusedxml.ElementTree as ET
 
+from . import const as c
+
 _LOGGER = logging.getLogger(__name__)
 
-DATA_ALGORITHM = "algorithm"
-DATA_BEGIN_HOUR = "begin_hour"
-DATA_BEGIN_MINUTE = "begin_minute"
-DATA_ENABLE = "enable"
-DATA_END_HOUR = "end_hour"
-DATA_END_MINUTE = "end_minute"
-DATA_BURN_LEVEL = "burn_level"
-DATA_DATE_TIME = "date_time"
-DATA_FILE_SIZE = "file_size"
-DATA_FILENAME = "file_name"
-DATA_FIRMWARE_VERSION = "firmware_version"
-DATA_FIRMWARE_VERSION_BUILD = "version_build"
-DATA_FIRMWARE_VERSION_MAJOR = "version_major"
-DATA_FIRMWARE_VERSION_MINOR = "version_minor"
-DATA_IP = "ip"
-DATA_LEVEL = "level"
-DATA_MAINTENANCE_ALARMS = "maintenance_alarms"
-DATA_MESSAGE_ID = "message_id"
-DATA_MDNS = "mdns"
-DATA_MODE = "mode"
-DATA_NAME = "name"
-DATA_NEW_FIREWOOD_ESTIMATE = "new_fire_wood_estimate"
-DATA_NEW_FIREWOOD_HOURS = "new_fire_wood_hours"
-DATA_NEW_FIREWOOD_MINUTES = "new_fire_wood_minutes"
-DATA_NIGHT_BEGIN_HOUR = "night_begin_hour"
-DATA_NIGHT_BEGIN_MINUTE = "night_begin_minute"
-DATA_NIGHT_BEGIN_TIME = "night_begin_time"
-DATA_NIGHT_END_HOUR = "night_end_hour"
-DATA_NIGHT_END_MINUTE = "night_end_minute"
-DATA_NIGHT_END_TIME = "night_end_time"
-DATA_NIGHT_LOWERING = "night_lowering"
-DATA_OPERATION_MODE = "operation_mode"
-DATA_OXYGEN_LEVEL = "oxygen_level"
-DATA_PHASE = "phase"
-DATA_REFILL_ALARM = "refill_alarm"
-DATA_REMOTE_REFILL_ALARM = "remote_refill_alarm"
-DATA_REMOTE_VERSION = "remote_version"
-DATA_REMOTE_VERSION_BUILD = "remote_version_build"
-DATA_REMOTE_VERSION_MAJOR = "remote_version_major"
-DATA_REMOTE_VERSION_MINOR = "remote_version_minor"
-DATA_RESPONSE = "response"
-DATA_ROOM_TEMPERATURE = "room_temperature"
-DATA_SAFETY_ALARMS = "safety_alarms"
-DATA_SSID = "ssid"
-DATA_STOVE_TEMPERATURE = "stove_temperature"
-DATA_SUCCESS = "success"
-DATA_TEST_CONFIGURATION = "configuration"
-DATA_TEST_O2_SENSOR = "o2_sensor"
-DATA_TEST_TEMP_SENSOR = "t10_sensor"
-DATA_TEST_VALVE1 = "valve_primary"
-DATA_TEST_VALVE2 = "valve_secondary"
-DATA_TEST_VALVE3 = "valve_tertiary"
-DATA_TIME_SINCE_REMOTE_MSG = "time_since_remote_msg"
-DATA_TIME_TO_NEW_FIREWOOD = "time_to_new_fire_wood"
-DATA_UPDATING = "updating"
-DATA_VALVE1_POSITION = "valve1_position"
-DATA_VALVE2_POSITION = "valve2_position"
-DATA_VALVE3_POSITION = "valve3_position"
+FILE_MODE = "mode"
+FILE_NAME = "file_name"
+FILE_SIZE = "file_size"
 
-DATA_YEAR = "year"
-DATA_MONTH = "month"
-DATA_DAY = "day"
-DATA_HOURS = "hours"
-DATA_MINUTES = "minutes"
-DATA_SECONDS = "seconds"
+FILENAME_INFO = "info.xml"
+
+IDENT_IP = "ip"
+IDENT_MDNS = "mdns"
+IDENT_NAME = "name"
+IDENT_SSID = "ssid"
+
+INFO_NODE_NAME = "Name"
+INFO_NODE_TYPE = "StoveType"
+
+KEY_ENABLE = "enable"
+KEY_LEVEL = "level"
+KEY_RESPONSE = "response"
 
 HTTP_HEADERS = {"Accept": "application/json"}
 
-MAINTENANCE_ALARMS = [
-    "Stove Backup Battery Low",
-    "O2 Sensor Fault",
-    "O2 Sensor Offset",
-    "Stove Temperature Sensor Fault",
-    "Room Temperature Sensor Fault",
-    "Communication Fault",
-    "Room Temperature Sensor Battery Low",
-]
-
-NIGHT_LOWERING_STATES = [
-    "Disabled",
-    "Init",
-    "Day",
-    "Night",
-    "Manual Night",
-]
-
-OPERATION_MODES = [
-    "Init",
-    "Self Test",
-    "Normal",
-    "Temperature Fault",
-    "O2 Fault",
-    "Calibration",
-    "Safety",
-    "Manual",
-    "MotorTest",
-    "Slow Combustion",
-    "Low Voltage",
-]
-
-PHASE = [
-    "Ignition",
-    "Burn",
-    "Burn",
-    "Burn",
-    "Glow",
-    "Standby",
-]
-
 RESPONSE_OK = "OK"
-
-SAFETY_ALARMS = [
-    "Valve Fault",
-    "Valve Fault",
-    "Valve Fault",
-    "Bad Configuration",
-    "Valve Disconnected",
-    "Valve Disconnected",
-    "Valve Disconnected",
-    "Valve Calibration Error",
-    "Valve Calibration Error",
-    "Valve Calibration Error",
-    "Chimney Overheat",
-    "Door Open Too Long",
-    "Manual Safety Alarm",
-    "Stove Sensor Fault",
-]
-
-SELF_TEST_VALUES = [
-    "Failed",
-    "Passed",
-    "Running",
-    "Not Completed",
-    "Not Started",
-]
+RESPONSE_SUCCESS = "success"
 
 STOVE_ACCESSPOINT_URL = "/esp/get_current_accesspoint"
 STOVE_BURN_LEVEL_URL = "/set_burn_level"
@@ -184,13 +73,12 @@ STOVE_SELFTEST_START_URL = "/start_selftest"
 STOVE_START_URL = "/start"
 STOVE_WRITE_OPEN_FILE_URL = "/write_open_file"
 
-
-class FileOpenFailedError(Exception):
-    """File Open request unsuccessful."""
-
-
-class FileWriteFailedError(Exception):
-    """File Write request unsuccessful."""
+YEAR = "year"
+MONTH = "month"
+DAY = "day"
+HOURS = "hours"
+MINUTES = "minutes"
+SECONDS = "seconds"
 
 
 class OpenFileMode(IntEnum):
@@ -227,70 +115,76 @@ class Stove:
         data = await self.get_raw_data()
         if data is None:
             return
-        phase = PHASE[data[DATA_PHASE]]
+        phase = c.PHASE[data[c.DATA_PHASE]]
         stove_datetime = datetime(
-            data[DATA_YEAR],
-            data[DATA_MONTH],
-            data[DATA_DAY],
-            data[DATA_HOURS],
-            data[DATA_MINUTES],
-            data[DATA_SECONDS],
+            data[YEAR],
+            data[MONTH],
+            data[DAY],
+            data[HOURS],
+            data[MINUTES],
+            data[SECONDS],
         )
         time_to_refuel = timedelta(
-            hours=data[DATA_NEW_FIREWOOD_HOURS], minutes=data[DATA_NEW_FIREWOOD_MINUTES]
+            hours=data[c.DATA_NEW_FIREWOOD_HOURS],
+            minutes=data[c.DATA_NEW_FIREWOOD_MINUTES],
         )
         refuel_estimate = stove_datetime + time_to_refuel
         maintenance_alarms = self._get_maintenance_alarms_text(
-            data[DATA_MAINTENANCE_ALARMS]
+            data[c.DATA_MAINTENANCE_ALARMS]
         )
-        safety_alarms = self._get_safety_alarms_text(data[DATA_SAFETY_ALARMS])
-        operation_mode = OPERATION_MODES[data[DATA_OPERATION_MODE]]
-        night_lowering = NIGHT_LOWERING_STATES[data[DATA_NIGHT_LOWERING]]
+        safety_alarms = self._get_safety_alarms_text(data[c.DATA_SAFETY_ALARMS])
+        operation_mode = c.OPERATION_MODES[data[c.DATA_OPERATION_MODE]]
+        night_lowering = c.NIGHT_LOWERING_STATES[data[c.DATA_NIGHT_LOWERING]]
         # Stove uses 24:00 for end of day
         nighttime_start = time(
-            hour=data[DATA_NIGHT_BEGIN_HOUR] % 24, minute=data[DATA_NIGHT_BEGIN_MINUTE]
+            hour=data[c.DATA_NIGHT_BEGIN_HOUR] % 24,
+            minute=data[c.DATA_NIGHT_BEGIN_MINUTE],
         )
         nighttime_end = time(
-            hour=data[DATA_NIGHT_END_HOUR] % 24, minute=data[DATA_NIGHT_END_MINUTE]
+            hour=data[c.DATA_NIGHT_END_HOUR] % 24, minute=data[c.DATA_NIGHT_END_MINUTE]
         )
         stove_version = (
-            f"{data[DATA_FIRMWARE_VERSION_MAJOR]}"
-            f".{data[DATA_FIRMWARE_VERSION_MINOR]}"
-            f".{data[DATA_FIRMWARE_VERSION_BUILD]}"
+            f"{data[c.DATA_FIRMWARE_VERSION_MAJOR]}"
+            f".{data[c.DATA_FIRMWARE_VERSION_MINOR]}"
+            f".{data[c.DATA_FIRMWARE_VERSION_BUILD]}"
         )
         remote_version = (
-            f"{data[DATA_REMOTE_VERSION_MAJOR]}"
-            f".{data[DATA_REMOTE_VERSION_MINOR]}"
-            f".{data[DATA_REMOTE_VERSION_BUILD]}"
+            f"{data[c.DATA_REMOTE_VERSION_MAJOR]}"
+            f".{data[c.DATA_REMOTE_VERSION_MINOR]}"
+            f".{data[c.DATA_REMOTE_VERSION_BUILD]}"
         )
-        for item in (DATA_STOVE_TEMPERATURE, DATA_ROOM_TEMPERATURE, DATA_OXYGEN_LEVEL):
+        for item in (
+            c.DATA_STOVE_TEMPERATURE,
+            c.DATA_ROOM_TEMPERATURE,
+            c.DATA_OXYGEN_LEVEL,
+        ):
             data[item] = float(data[item] / 100)
         processed_data = {
-            DATA_ALGORITHM: data[DATA_ALGORITHM],
-            DATA_BURN_LEVEL: data[DATA_BURN_LEVEL],
-            DATA_MAINTENANCE_ALARMS: maintenance_alarms,
-            DATA_MESSAGE_ID: data[DATA_MESSAGE_ID],
-            DATA_NEW_FIREWOOD_ESTIMATE: refuel_estimate,
-            DATA_NIGHT_BEGIN_TIME: nighttime_start,
-            DATA_NIGHT_END_TIME: nighttime_end,
-            DATA_NIGHT_LOWERING: night_lowering,
-            DATA_OPERATION_MODE: operation_mode,
-            DATA_OXYGEN_LEVEL: data[DATA_OXYGEN_LEVEL],
-            DATA_PHASE: phase,
-            DATA_REFILL_ALARM: data[DATA_REFILL_ALARM],
-            DATA_REMOTE_REFILL_ALARM: data[DATA_REMOTE_REFILL_ALARM],
-            DATA_REMOTE_VERSION: remote_version,
-            DATA_ROOM_TEMPERATURE: data[DATA_ROOM_TEMPERATURE],
-            DATA_SAFETY_ALARMS: safety_alarms,
-            DATA_STOVE_TEMPERATURE: data[DATA_STOVE_TEMPERATURE],
-            DATA_TIME_SINCE_REMOTE_MSG: data[DATA_TIME_SINCE_REMOTE_MSG],
-            DATA_DATE_TIME: stove_datetime,
-            DATA_TIME_TO_NEW_FIREWOOD: time_to_refuel,
-            DATA_UPDATING: data[DATA_UPDATING],
-            DATA_VALVE1_POSITION: data[DATA_VALVE1_POSITION],
-            DATA_VALVE2_POSITION: data[DATA_VALVE2_POSITION],
-            DATA_VALVE3_POSITION: data[DATA_VALVE3_POSITION],
-            DATA_FIRMWARE_VERSION: stove_version,
+            c.DATA_ALGORITHM: data[c.DATA_ALGORITHM],
+            c.DATA_BURN_LEVEL: data[c.DATA_BURN_LEVEL],
+            c.DATA_MAINTENANCE_ALARMS: maintenance_alarms,
+            c.DATA_MESSAGE_ID: data[c.DATA_MESSAGE_ID],
+            c.DATA_NEW_FIREWOOD_ESTIMATE: refuel_estimate,
+            c.DATA_NIGHT_BEGIN_TIME: nighttime_start,
+            c.DATA_NIGHT_END_TIME: nighttime_end,
+            c.DATA_NIGHT_LOWERING: night_lowering,
+            c.DATA_OPERATION_MODE: operation_mode,
+            c.DATA_OXYGEN_LEVEL: data[c.DATA_OXYGEN_LEVEL],
+            c.DATA_PHASE: phase,
+            c.DATA_REFILL_ALARM: data[c.DATA_REFILL_ALARM],
+            c.DATA_REMOTE_REFILL_ALARM: data[c.DATA_REMOTE_REFILL_ALARM],
+            c.DATA_REMOTE_VERSION: remote_version,
+            c.DATA_ROOM_TEMPERATURE: data[c.DATA_ROOM_TEMPERATURE],
+            c.DATA_SAFETY_ALARMS: safety_alarms,
+            c.DATA_STOVE_TEMPERATURE: data[c.DATA_STOVE_TEMPERATURE],
+            c.DATA_TIME_SINCE_REMOTE_MSG: data[c.DATA_TIME_SINCE_REMOTE_MSG],
+            c.DATA_DATE_TIME: stove_datetime,
+            c.DATA_TIME_TO_NEW_FIREWOOD: time_to_refuel,
+            c.DATA_UPDATING: data[c.DATA_UPDATING],
+            c.DATA_VALVE1_POSITION: data[c.DATA_VALVE1_POSITION],
+            c.DATA_VALVE2_POSITION: data[c.DATA_VALVE2_POSITION],
+            c.DATA_VALVE3_POSITION: data[c.DATA_VALVE3_POSITION],
+            c.DATA_FIRMWARE_VERSION: stove_version,
         }
         return processed_data
 
@@ -304,12 +198,12 @@ class Stove:
             _LOGGER.error("get_live_data got unexpected response from stove.")
             return
         data_out = {
-            DATA_STOVE_TEMPERATURE: [],
-            DATA_OXYGEN_LEVEL: [],
+            c.DATA_STOVE_TEMPERATURE: [],
+            c.DATA_OXYGEN_LEVEL: [],
         }
         number_of_datapoints = int(response_length / 8)
         for i in range(number_of_datapoints):
-            data_out[DATA_STOVE_TEMPERATURE].append(
+            data_out[c.DATA_STOVE_TEMPERATURE].append(
                 (
                     bin_arr[i * 4] << 4
                     | bin_arr[i * 4 + 1] << 0
@@ -318,7 +212,7 @@ class Stove:
                 )
                 / 100
             )
-            data_out[DATA_OXYGEN_LEVEL].append(
+            data_out[c.DATA_OXYGEN_LEVEL].append(
                 (
                     bin_arr[(number_of_datapoints + i) * 4 + 0] << 4
                     | bin_arr[(number_of_datapoints + i) * 4 + 1] << 0
@@ -339,14 +233,14 @@ class Stove:
 
     async def set_burn_level(self, burn_level):
         """Set the desired burnlevel."""
-        data = {DATA_LEVEL: burn_level}
+        data = {KEY_LEVEL: burn_level}
         json_str = await self._post(
             "http://" + self.stove_host + STOVE_BURN_LEVEL_URL, data
         )
         if json_str is None:
             _LOGGER.error("Got empty or no response from stove.")
             return False
-        return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
+        return json.loads(json_str).get(KEY_RESPONSE) == RESPONSE_OK
 
     async def set_night_lowering(self, state=None):
         """Switch/toggle night lowering (True=on, False=off, None=toggle)."""
@@ -356,24 +250,24 @@ class Stove:
             # 2 == On outside night hours
             # 3 == On inside night hours
             # When does night_lowering == 1 happen?
-            cur_state = data[DATA_NIGHT_LOWERING] > 0
+            cur_state = data[c.DATA_NIGHT_LOWERING] > 0
         else:
             cur_state = not state
         url = STOVE_NIGHT_LOWERING_OFF_URL if cur_state else STOVE_NIGHT_LOWERING_ON_URL
         result = await self._get_json("http://" + self.stove_host + url)
-        return result.get(DATA_RESPONSE) == RESPONSE_OK
+        return result.get(KEY_RESPONSE) == RESPONSE_OK
 
     async def set_night_lowering_hours(self, start=None, end=None):
         """Set night lowering start and end time."""
         if start is None or end is None:
             data = await self.get_data()
-        start = start or data[DATA_NIGHT_BEGIN_TIME]
-        end = end or data[DATA_NIGHT_END_TIME]
+        start = start or data[c.DATA_NIGHT_BEGIN_TIME]
+        end = end or data[c.DATA_NIGHT_END_TIME]
         data = {
-            DATA_BEGIN_HOUR: start.hour,
-            DATA_BEGIN_MINUTE: start.minute,
-            DATA_END_HOUR: end.hour,
-            DATA_END_MINUTE: end.minute,
+            c.DATA_BEGIN_HOUR: start.hour,
+            c.DATA_BEGIN_MINUTE: start.minute,
+            c.DATA_END_HOUR: end.hour,
+            c.DATA_END_MINUTE: end.minute,
         }
         json_str = await self._post(
             "http://" + self.stove_host + STOVE_NIGHT_TIME_URL, data
@@ -381,23 +275,23 @@ class Stove:
         if json_str is None:
             _LOGGER.error("Got empty or no response from stove.")
             return False
-        return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
+        return json.loads(json_str).get(KEY_RESPONSE) == RESPONSE_OK
 
     async def set_remote_refill_alarm(self, state=None):
         """Set or toggle remote_refill_alarm setting."""
         if state is None:
             data = await self.get_raw_data()
-            cur_state = data[DATA_REMOTE_REFILL_ALARM] == 1
+            cur_state = data[c.DATA_REMOTE_REFILL_ALARM] == 1
         else:
             cur_state = not state
-        data = {DATA_ENABLE: 0 if cur_state else 1}
+        data = {KEY_ENABLE: 0 if cur_state else 1}
         json_str = await self._post(
             "http://" + self.stove_host + STOVE_REMOTE_REFILL_ALARM_URL, data
         )
         if json_str is None:
             _LOGGER.error("Got empty or no response from stove.")
             return False
-        return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
+        return json.loads(json_str).get(KEY_RESPONSE) == RESPONSE_OK
 
     async def set_time(self, new_time=None):
         """Set the time and date of the stove."""
@@ -417,12 +311,12 @@ class Stove:
         if json_str is None:
             _LOGGER.error("Got empty or no response from stove.")
             return False
-        return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
+        return json.loads(json_str).get(KEY_RESPONSE) == RESPONSE_OK
 
     async def start(self):
         """Start the ignition phase."""
         result = await self._get_json("http://" + self.stove_host + STOVE_START_URL)
-        return result.get(DATA_RESPONSE) == RESPONSE_OK
+        return result.get(KEY_RESPONSE) == RESPONSE_OK
 
     async def write_text_file(self, filename, text):
         async with _StoveWritableFile(self, filename) as f:
@@ -435,12 +329,12 @@ class Stove:
     async def delete_file(self, filename):
         json_str = await self._post(
             "http://" + self.stove_host + STOVE_NIGHT_TIME_URL,
-            {DATA_FILENAME: filename},
+            {c.DATA_FILENAME: filename},
         )
         if json_str is None:
             _LOGGER.error("Got empty or no response from stove.")
             return False
-        return json.loads(json_str).get(DATA_RESPONSE) == RESPONSE_OK
+        return json.loads(json_str).get(KEY_RESPONSE) == RESPONSE_OK
 
     async def _identify(self):
         """Get identification and set the properties on the object."""
@@ -452,18 +346,18 @@ class Stove:
                 _LOGGER.error("Unable to read stove identity informations.")
                 return
 
-            if DATA_NAME in stove_id:
-                self.name = stove_id[DATA_NAME]
+            if IDENT_NAME in stove_id:
+                self.name = stove_id[IDENT_NAME]
             else:
                 _LOGGER.warning("Unable to read stove name.")
 
-            if DATA_IP in stove_id:
-                self.stove_ip = stove_id[DATA_IP]
+            if IDENT_IP in stove_id:
+                self.stove_ip = stove_id[IDENT_IP]
             else:
                 _LOGGER.warning("Unable to read stove IP.")
 
-            if DATA_MDNS in stove_id:
-                self.stove_mdns = stove_id[DATA_MDNS]
+            if IDENT_MDNS in stove_id:
+                self.stove_mdns = stove_id[IDENT_MDNS]
                 self.mac_address = int(self.stove_mdns[-12:], 16) & 0xFDFFFFFFFFFF
 
             else:
@@ -474,7 +368,7 @@ class Stove:
             result = await self._get_json(
                 "http://" + self.stove_host + STOVE_ACCESSPOINT_URL
             )
-            stove_ssid = result.get(DATA_SSID)
+            stove_ssid = result.get(IDENT_SSID)
             if stove_ssid is None:
                 _LOGGER.warning("Unable to read stove SSID.")
                 return
@@ -482,12 +376,12 @@ class Stove:
 
         async def get_version_info():
             """Get stove version info."""
-            async with _StoveFile(self, "info.xml") as f:
+            async with _StoveFile(self, FILENAME_INFO) as f:
                 xml_str = await f.read()
                 try:
                     xml_root = ET.fromstring(xml_str)
-                    self.algo_version = xml_root.find("Name").text
-                    self.series = xml_root.find("StoveType").text
+                    self.algo_version = xml_root.find(INFO_NODE_NAME).text
+                    self.series = xml_root.find(INFO_NODE_TYPE).text
                 except ET.ParseError:
                     _LOGGER.warning("Invalid XML. Could not get version info.")
                 except AttributeError:
@@ -525,24 +419,24 @@ class Stove:
         result = await self._get_json(
             "http://" + self.stove_host + STOVE_SELFTEST_START_URL
         )
-        return result.get(DATA_RESPONSE) == RESPONSE_OK
+        return result.get(KEY_RESPONSE) == RESPONSE_OK
 
     def _get_maintenance_alarms_text(self, bitmask):
         """Process maintenance alarms bitmask, return a list of strings."""
-        num_alarms = len(MAINTENANCE_ALARMS)
+        num_alarms = len(c.MAINTENANCE_ALARMS)
         ret = []
         for i in range(num_alarms):
             if 1 << i & bitmask:
-                ret.append(MAINTENANCE_ALARMS[i])
+                ret.append(c.MAINTENANCE_ALARMS[i])
         return ret
 
     def _get_safety_alarms_text(self, bitmask):
         """Process safety alarms bitmask, return a list of strings."""
-        num_alarms = len(SAFETY_ALARMS)
+        num_alarms = len(c.SAFETY_ALARMS)
         ret = []
         for i in range(num_alarms):
             if 1 << i & bitmask:
-                ret.append(SAFETY_ALARMS[i])
+                ret.append(c.SAFETY_ALARMS[i])
         return ret
 
     async def _get_json(self, url):
@@ -601,7 +495,7 @@ class _SelfTest:
                     return in_dict
                 out_dict = {}
                 for k, v in in_dict.items():
-                    out_dict[k] = SELF_TEST_VALUES[v]
+                    out_dict[k] = c.SELF_TEST_VALUES[v]
                 return out_dict
 
             intermediate_raw = await self.stove._self_test_result()
@@ -633,7 +527,7 @@ class _StoveFile:
         """Initialize the context manager."""
         self.stove = stove
         self.base_url = "http://" + stove.stove_host
-        self.data = {DATA_FILENAME: path, DATA_MODE: OpenFileMode.READ}
+        self.data = {FILE_NAME: path, FILE_MODE: OpenFileMode.READ}
         self.file_size = None
 
     async def __aenter__(self):
@@ -645,11 +539,11 @@ class _StoveFile:
             if json_str is None:
                 raise ClientConnectorError
             response_data = json.loads(json_str)
-            if response_data.get(DATA_SUCCESS) != 1:
-                raise FileOpenFailedError
-            self.file_size = response_data.get(DATA_FILE_SIZE)
+            if response_data.get(RESPONSE_SUCCESS) != 1:
+                raise c.FileOpenFailedError
+            self.file_size = response_data.get(FILE_SIZE)
             return self
-        except (ClientConnectorError, FileOpenFailedError):
+        except (ClientConnectorError, c.FileOpenFailedError):
             await self.stove._get(self.base_url + STOVE_CLOSE_FILE_URL)
             raise
 
@@ -668,7 +562,7 @@ class _StoveWritableFile(_StoveFile):
     def __init__(self, stove, path):
         """Initialize the context manager."""
         super().__init__(stove, path)
-        self.data = {DATA_FILENAME: path, DATA_MODE: OpenFileMode.WRITE}
+        self.data = {FILE_NAME: path, FILE_MODE: OpenFileMode.WRITE}
 
     async def write_text(self, text, offset=0):
         """Write text to the file."""
@@ -699,6 +593,6 @@ class _StoveWritableFile(_StoveFile):
             await writer.drain()
             response = await reader.read(2)
             if response != b"OK":
-                raise FileWriteFailedError
+                raise c.FileWriteFailedError
         finally:
             writer.close()
