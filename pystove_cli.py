@@ -312,7 +312,7 @@ if __name__ == "__main__":
             command = arg
         elif opt in ("-h", "--host"):
             stove_host = arg
-        elif opt in ("-v" "--value"):
+        elif opt in ("-v", "--value"):
             value = arg
     if stove_host is None:
         print_help()
