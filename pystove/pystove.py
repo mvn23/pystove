@@ -115,7 +115,9 @@ class Stove:
         data = await self.get_raw_data()
         if data is None:
             return
-        phase = c.PHASE[data[c.DATA_PHASE]]
+        phase = c.BurnPhase(
+            data[c.DATA_PHASE] if data[c.DATA_PHASE] not in (2, 3) else 1
+        )
         stove_datetime = datetime(
             data[YEAR],
             data[MONTH],
@@ -129,12 +131,8 @@ class Stove:
             minutes=data[c.DATA_NEW_FIREWOOD_MINUTES],
         )
         refuel_estimate = stove_datetime + time_to_refuel
-        maintenance_alarms = self._get_maintenance_alarms_text(
-            data[c.DATA_MAINTENANCE_ALARMS]
-        )
-        safety_alarms = self._get_safety_alarms_text(data[c.DATA_SAFETY_ALARMS])
-        operation_mode = c.OPERATION_MODES[data[c.DATA_OPERATION_MODE]]
-        night_lowering = c.NIGHT_LOWERING_STATES[data[c.DATA_NIGHT_LOWERING]]
+        operation_mode = c.OperationMode(data[c.DATA_OPERATION_MODE])
+        night_lowering = c.NightLoweringState(data[c.DATA_NIGHT_LOWERING])
         # Stove uses 24:00 for end of day
         nighttime_start = time(
             hour=data[c.DATA_NIGHT_BEGIN_HOUR] % 24,
@@ -162,7 +160,9 @@ class Stove:
         processed_data = {
             c.DATA_ALGORITHM: data[c.DATA_ALGORITHM],
             c.DATA_BURN_LEVEL: data[c.DATA_BURN_LEVEL],
-            c.DATA_MAINTENANCE_ALARMS: maintenance_alarms,
+            c.DATA_MAINTENANCE_ALARMS: c.MaintenanceAlarm(
+                data[c.DATA_MAINTENANCE_ALARMS]
+            ),
             c.DATA_MESSAGE_ID: data[c.DATA_MESSAGE_ID],
             c.DATA_NEW_FIREWOOD_ESTIMATE: refuel_estimate,
             c.DATA_NIGHT_BEGIN_TIME: nighttime_start,
@@ -175,7 +175,7 @@ class Stove:
             c.DATA_REMOTE_REFILL_ALARM: data[c.DATA_REMOTE_REFILL_ALARM],
             c.DATA_REMOTE_VERSION: remote_version,
             c.DATA_ROOM_TEMPERATURE: data[c.DATA_ROOM_TEMPERATURE],
-            c.DATA_SAFETY_ALARMS: safety_alarms,
+            c.DATA_SAFETY_ALARMS: c.SafetyAlarm(data[c.DATA_SAFETY_ALARMS]),
             c.DATA_STOVE_TEMPERATURE: data[c.DATA_STOVE_TEMPERATURE],
             c.DATA_TIME_SINCE_REMOTE_MSG: data[c.DATA_TIME_SINCE_REMOTE_MSG],
             c.DATA_DATE_TIME: stove_datetime,
@@ -421,24 +421,6 @@ class Stove:
         )
         return result.get(KEY_RESPONSE) == RESPONSE_OK
 
-    def _get_maintenance_alarms_text(self, bitmask):
-        """Process maintenance alarms bitmask, return a list of strings."""
-        num_alarms = len(c.MAINTENANCE_ALARMS)
-        ret = []
-        for i in range(num_alarms):
-            if 1 << i & bitmask:
-                ret.append(c.MAINTENANCE_ALARMS[i])
-        return ret
-
-    def _get_safety_alarms_text(self, bitmask):
-        """Process safety alarms bitmask, return a list of strings."""
-        num_alarms = len(c.SAFETY_ALARMS)
-        ret = []
-        for i in range(num_alarms):
-            if 1 << i & bitmask:
-                ret.append(c.SAFETY_ALARMS[i])
-        return ret
-
     async def _get_json(self, url):
         """Get data from url, interpret as json, return result."""
         json_str = await self._get(url)
@@ -495,7 +477,7 @@ class _SelfTest:
                     return in_dict
                 out_dict = {}
                 for k, v in in_dict.items():
-                    out_dict[k] = c.SELF_TEST_VALUES[v]
+                    out_dict[k] = c.SelfTestState(v)
                 return out_dict
 
             intermediate_raw = await self.stove._self_test_result()
@@ -503,7 +485,7 @@ class _SelfTest:
                 return None
             else:
                 intermediate = process_dict(intermediate_raw)
-                if 2 not in intermediate_raw.values():
+                if c.SelfTestState.RUNNING not in intermediate.values():
                     self.test_finished = True
                 return intermediate
 
