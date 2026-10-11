@@ -122,7 +122,7 @@ class Stove:
             data[YEAR],
             data[MONTH],
             data[DAY],
-            data[HOURS],
+            data[HOURS] % 24,
             data[MINUTES],
             data[SECONDS],
         )
